@@ -303,3 +303,33 @@ Traced the 3s timeout to `solution/planner/skeleton.py:propose_isar_skeletons`. 
 Both files parse via `ast.parse`. Import chain checked: `from planner.goals import _run_theory_with_timeout` works without circular import (goals.py does not import from skeleton.py).
 
 **Open: re-sweep on `hard_25.txt` to confirm.** Pre-F15/F16 sweep result was 13/25 strict-pass with 2 wall-time overruns (>4× budget) and 7 ❌ ReadTimeout errors. Post-F15/F16 expected: same or higher strict-pass count, max wall-time bounded close to T=180s, ReadTimeout errors converted to clean `success=False` outcomes.
+
+## Entry 14 — Build the planner's micro-RAG from HOL-stdlib + AFP
+
+**Request:** The previous sweep's failure pattern was concentrated in the `finite A ⟹ card ... = ...` and `finite A ⟹ sum ... = ...` goal families — the LLM (qwen2.5-coder:7b) doesn't reliably surface the relevant cardinality/sum lemma names without hints. The planner has a documented `--priors` and `--hintlex` interface for exactly this case (assignment spec lists "Micro RAG extracted from AFP" as a planner component, upstream README confirms), but no priors/hintlex files had been built. Asked Claude to build them.
+
+**Actioned response:**
+
+1. **Downloaded AFP-current** (~96 MB tarball → 407 MB extracted). The Archive of Formal Proofs at `https://isa-afp.org/release/afp-current.tar.gz` is the canonical input corpus for the planner's micro-RAG. Saved to `/home/zack/Desktop/AGENTIC_REASONING/afp_download/afp-2026-05-13/` (979 sessions, 10,072 `.thy` files).
+
+2. **Wrote `agenticreasoning/build_rag.sh`** — a thin wrapper around the existing `planner.extract.mine_afp_corpus_rich` and `planner.priors` infrastructure. Three modes:
+   - `holstdlib` — extract from Isabelle's bundled `~~/src/HOL/` (115 theories)
+   - `afp <afp-thys-dir>` — extract from a local AFP checkout
+   - `combined <afp-thys-dir>` — both, concatenated then aggregated
+
+   The script auto-detects `ISABELLE_HOME` via `isabelle env` and resolves Isabelle's HOL directory. Despite the name, `mine_afp_corpus_rich` is a generic `*.thy` rglob walker, not AFP-specific.
+
+3. **Ran `./build_rag.sh combined <afp-thys>`** producing:
+   - `solution/datasets/isar_pairs_holstdlib.jsonl` — 63,734 records (35.9 MB)
+   - `solution/datasets/isar_pairs_afp.jsonl` — 289,508 records (187.7 MB)
+   - `solution/datasets/isar_pairs_combined.jsonl` — 353,242 records (223.6 MB)
+   - `solution/datasets/isar_priors.json` — 34,857 priors rules (4.7 MB)
+   - `solution/datasets/isar_hintlex.json` — 17,582 tokens mapped to lemma sets (2.3 MB)
+
+   Compared to a HOL-stdlib-only extraction (5,333 priors / 2,822 hintlex tokens), the combined corpus is ~6× larger in both metrics.
+
+4. **Updated `.gitignore`** to exclude the generated artefacts (`isar_pairs_*.jsonl`, `isar_priors.json`, `isar_hintlex.json`) — they're large and regenerable from the source corpora via `build_rag.sh`.
+
+5. **Updated `SWEEP_RUNBOOK.md`** with a new Step 2b that runs `build_rag.sh` and updated Step 4 to pass `--priors` and `--hintlex` (with absolute paths) via `EXTRA_FLAGS`. The runbook checks for existing RAG artefacts before downloading AFP again, so repeat invocations are idempotent.
+
+**Open: re-sweep to measure RAG impact.** The previous post-F14 sweep was 13/25 strict-pass; the failure cases were dominated by `finite A ⟹ card ... = ...` style goals. Predicted lift from RAG injection of the relevant cardinality lemma names: +3 to +6 goals into strict-pass.

@@ -34,3 +34,10 @@ Thumbs.db
 
 # Scratch / debug
 **/tmp/
+
+*.typ
+
+# Generated micro-RAG artefacts (regenerable via build_rag.sh — see SWEEP_RUNBOOK.md)
+solution/datasets/isar_pairs_*.jsonl
+solution/datasets/isar_priors.json
+solution/datasets/isar_hintlex.json
