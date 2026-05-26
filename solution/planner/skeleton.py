@@ -782,7 +782,7 @@ def propose_isar_skeleton_diverse_best(
     """
     # Optional context hints from Isabelle state + hint lexicon
     rec_hints: List[str] = []
-    if context_hints:
+    if context_hints and (deadline is None or not deadline.expired()):
         state_block = _state_block_for_goal(isabelle, session_id, goal)
         rec_hints += _facts_from_state(state_block)[:8]
     hintlex = _load_hintlex(hintlex_path)
@@ -808,6 +808,14 @@ def propose_isar_skeleton_diverse_best(
 
     scored: List[Tuple[float, int, int]] = []  # (score, n_subgoals, idx)
     for i, sk in enumerate(cands):
+        # F14: bail out of scoring once the per-goal deadline expires. Without this,
+        # _quick_sketch_score runs an Isabelle round-trip per candidate, which on a
+        # hard goal can compound to 30-90s well past outline_budget_s. Remaining
+        # unscored candidates keep insertion order so we still pick a usable outline.
+        if deadline is not None and deadline.expired():
+            for j in range(i, len(cands)):
+                scored.append((0.0, 0, j))
+            break
         n = _quick_sketch_score(isabelle, session_id, sk.text)
         pat_pen = _pattern_penalty(goal, sk.text, rules)
         hint_b = _hint_bonus_from_outline(sk.text, rec_hints)

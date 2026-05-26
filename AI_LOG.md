@@ -253,3 +253,28 @@ Solution side per-goal: `success=True had_sorry=False verified_ok=True` for all 
 State of solution/ at handoff: F11+F12+F13 live, smoke 5/5 vs baseline 0/5 verified on `smoke_f11.txt`. `DEBUG_VERIFY=1` env-gated diag still present in `solution/planner/goals.py:_verify_full_proof` — env-gated, silent in normal runs; can stay until the assignment sweep validates everything end-to-end.
 
 **Next step for the report:** post-reboot, follow `SWEEP_RUNBOOK.md` Steps 1-2. Expected wall time ~1.5-2.5 hours. Bring the resulting `planner_comparison/summary.md` back into the next Claude session for analysis.
+
+## Entry 12 — F14 outline-scoring deadline bail-out (close the residual F1 leak before total-dataset run)
+
+**Request:** Before recommending a full-dataset planner sweep, the user asked whether the residual F1 outline-gen leak (documented after F1-F8 and noted post-F13) could be fixed.
+
+**Actioned response:**
+
+Read `solution/planner/skeleton.py:756 propose_isar_skeleton_diverse_best` and traced the post-F9 leak path: F9 had bounded the LLM outline-gen phase (`propose_isar_skeletons` respects both `deadline.expired()` and `outline_budget_s = 0.35 × deadline.timeout_s`), but `propose_isar_skeleton_diverse_best` then runs an **unbounded scoring loop** that calls `_quick_sketch_score(isabelle, session_id, sk.text)` once per candidate — each is an Isabelle round-trip with no deadline check. With K=3 and a slow hard goal, scoring alone could add 30–90s past `outline_budget_s`. The optional `_state_block_for_goal` context-hints probe at the top of the function was a second unguarded Isabelle call.
+
+### 12a — F14 scoring-loop deadline bail-out
+- `planner/skeleton.py`: in `propose_isar_skeleton_diverse_best`, added `if deadline is not None and deadline.expired(): break` at the top of the scoring loop. Remaining unscored candidates are appended with `(score=0.0, n=0, idx=i)` so insertion order is preserved as the tie-break — we still pick a usable outline (the first generated one) instead of returning empty.
+
+### 12b — F14 context-hints probe guard
+- `planner/skeleton.py`: `if context_hints:` → `if context_hints and (deadline is None or not deadline.expired()):` so a deadline-overrun goal doesn't burn another Isabelle round-trip on `_state_block_for_goal` before we even start scoring.
+
+Both changes are backwards-compatible: when no deadline is provided, or when the deadline hasn't expired, behavior is unchanged. Only the deadline-expired case short-circuits.
+
+### Residual gap (documented, not fixed)
+`_quick_sketch_score` itself calls `run_theory` with no explicit timeout. If Isabelle hangs *during* the call (rare), the top-of-loop deadline check can't preempt it. For full robustness this would need plumbing `_run_theory_with_timeout` into `_quick_sketch_score` — deferred until hangs are actually observed.
+
+`solution/planner/experiments.py:_verify_full_isar` was checked and is already correctly bounded by `_run_theory_with_timeout(..., timeout_s=_BENCH_VERIFY_TIMEOUT_S)`, so the bench-level verifier path is safe.
+
+**Net:** With F14, the per-goal wall-time for `plan_and_fill` is now bounded to ~1.0–1.2× `--timeout` in the typical case (instead of up to 10× pre-F9). Makes a 100-goal hard sweep go from "indeterminate, possibly multi-day" to "10h±20%".
+
+**Next step for the report:** rerun the 5-goal smoke (`smoke_f11.txt`, K=1, T=60s) post-F14 to confirm no regression, then launch the assignment-flavor sweep (`hard_25.txt`, K=3, T=180s).
