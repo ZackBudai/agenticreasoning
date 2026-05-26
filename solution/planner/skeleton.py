@@ -27,6 +27,17 @@ _OUTLINE_BUDGET_FRACTION = 0.35
 # Isabelle helpers (for quick sketch check)
 from prover.isabelle_api import build_theory, run_theory, last_print_state_block
 from prover.utils import parse_subgoals
+# F15: bounded sketch check
+from planner.goals import _run_theory_with_timeout
+
+# F15: cap _quick_sketch_score's Isabelle round-trip. Without this an in-flight
+# Isabelle call inside the scoring loop can blow past the per-goal deadline
+# (the F14 deadline check at the top of the loop can't preempt mid-call).
+_SKETCH_CHECK_TIMEOUT_S = 20
+# F16: minimum viable per-call LLM timeout. With qwen2.5-coder:7b on a hard goal
+# any call under ~10s is guaranteed to ReadTimeout; bail the loop instead of
+# firing a doomed call that surfaces as an unhandled ❌ planner error in the bench.
+_MIN_VIABLE_LLM_CALL_S = 10
 
 # Reuse local-context miner from repair (defs/facts list)
 from planner.repair import _facts_from_state as _facts_from_state
@@ -471,7 +482,8 @@ def _quick_sketch_score(isabelle, session_id: str, outline_text: str) -> int:
         already_closed = last_line in {"qed", "done"} or last_line.startswith("by ")
         end_with = None if already_closed else "sorry"
         thy = build_theory(outline_text.splitlines(), add_print_state=True, end_with=end_with)
-        resps = run_theory(isabelle, session_id, thy)
+        # F15: bounded round-trip so a slow Isabelle call can't blow the per-goal budget.
+        resps = _run_theory_with_timeout(isabelle, session_id, thy, timeout_s=_SKETCH_CHECK_TIMEOUT_S)
         block = last_print_state_block(resps) or ""
         n = parse_subgoals(block)
         # Return 0 for already-closed proofs (best possible), else subgoal count
@@ -659,11 +671,15 @@ def propose_isar_skeletons(
         # Compute a tight timeout for this individual call.
         per_call_caps = [_OUTLINE_PER_CALL_CAP_S, int(OLLAMA_TIMEOUT_S)]
         if deadline is not None:
-            per_call_caps.append(deadline.remaining_int(cap=_OUTLINE_PER_CALL_CAP_S, min_=3))
+            per_call_caps.append(deadline.remaining_int(cap=_OUTLINE_PER_CALL_CAP_S, min_=_MIN_VIABLE_LLM_CALL_S))
         if outline_budget_s is not None:
-            outline_left = max(3.0, outline_budget_s - (time.monotonic() - t0))
-            per_call_caps.append(max(3, int(outline_left / remaining_outlines)))
-        per_call_timeout = max(3, min(per_call_caps))
+            outline_left = max(float(_MIN_VIABLE_LLM_CALL_S), outline_budget_s - (time.monotonic() - t0))
+            per_call_caps.append(max(_MIN_VIABLE_LLM_CALL_S, int(outline_left / remaining_outlines)))
+        # F16: if even the most generous cap is below the viable floor, bail rather
+        # than fire a doomed call that surfaces as `❌ planner error: ReadTimeout`.
+        if min(per_call_caps) < _MIN_VIABLE_LLM_CALL_S:
+            break
+        per_call_timeout = max(_MIN_VIABLE_LLM_CALL_S, min(per_call_caps))
 
         prompt = SKELETON_PROMPT.format(goal=goal)
         if hints:
@@ -693,7 +709,12 @@ def propose_isar_skeletons(
         # Fallback: at least one outline. Honor the deadline for the single call.
         single_to = _OUTLINE_PER_CALL_CAP_S
         if deadline is not None:
-            single_to = max(3, min(_OUTLINE_PER_CALL_CAP_S, deadline.remaining_int(cap=_OUTLINE_PER_CALL_CAP_S, min_=3)))
+            # F16: respect the viable-call floor; if no time is left, return empty
+            # rather than firing a doomed call.
+            remaining = deadline.remaining_int(cap=_OUTLINE_PER_CALL_CAP_S, min_=_MIN_VIABLE_LLM_CALL_S)
+            if remaining < _MIN_VIABLE_LLM_CALL_S:
+                return out
+            single_to = max(_MIN_VIABLE_LLM_CALL_S, min(_OUTLINE_PER_CALL_CAP_S, remaining))
         return [propose_isar_skeleton(goal, model=model, temp=0.3, force_outline=force_outline,
                                       hints=hints, timeout_s=single_to)]
     return out

@@ -278,3 +278,28 @@ Both changes are backwards-compatible: when no deadline is provided, or when the
 **Net:** With F14, the per-goal wall-time for `plan_and_fill` is now bounded to ~1.0–1.2× `--timeout` in the typical case (instead of up to 10× pre-F9). Makes a 100-goal hard sweep go from "indeterminate, possibly multi-day" to "10h±20%".
 
 **Next step for the report:** rerun the 5-goal smoke (`smoke_f11.txt`, K=1, T=60s) post-F14 to confirm no regression, then launch the assignment-flavor sweep (`hard_25.txt`, K=3, T=180s).
+
+## Entry 13 — F15 bounded sketch check + F16 viable-LLM-call floor (post-sweep cleanup)
+
+**Request:** Fix two issues surfaced by the post-F14 hard_25 sweep: (a) goal 25's 712s overrun (F14 residual — single in-flight Isabelle call inside `_quick_sketch_score` not preemptable); (b) 7 goals (28% of the run) marked as `❌ planner error: ReadTimeout (read timeout=3)` — investigation showed these were caused by the planner clamping per-call LLM timeout to `max(3, ...)` when the per-goal deadline was nearly exhausted, firing a guaranteed-to-fail 3s call against a qwen2.5-coder:7b model.
+
+**Actioned response:**
+
+Traced the 3s timeout to `solution/planner/skeleton.py:propose_isar_skeletons`. The per-call cap formula was `per_call_timeout = max(3, min(per_call_caps))` — when `deadline.remaining_int(min_=3)` returned 3, the formula clamped the LLM timeout to 3s. With qwen2.5-coder:7b on a hard goal, any call under ~10s reliably hits `requests.exceptions.ReadTimeout`. The bench's outer try/except catches it but logs it as a planner error rather than as a clean budget-exhaustion failure.
+
+### 13a — F15 bounded sketch check (`_quick_sketch_score`)
+- `planner/skeleton.py`: changed `_quick_sketch_score` to use `_run_theory_with_timeout(isabelle, session, thy, timeout_s=_SKETCH_CHECK_TIMEOUT_S)` (20s cap) instead of unbounded `run_theory(...)`. New constant `_SKETCH_CHECK_TIMEOUT_S = 20`.
+- Closes the F14 residual: in-flight Isabelle sketch checks can now be preempted at 20s, so the worst-case observed wall-time on goal 9 (709s) and goal 25 (712s) should now be bounded.
+- Imports `_run_theory_with_timeout` from `planner.goals` (already used by `_verify_full_isar` in `experiments.py` — same pattern, no new infra).
+
+### 13b — F16 viable-LLM-call floor
+- `planner/skeleton.py`: raised the per-call timeout floor from 3s to a new constant `_MIN_VIABLE_LLM_CALL_S = 10`. Three call sites updated:
+  1. `propose_isar_skeletons` main loop: changed `max(3, min(per_call_caps))` to `max(_MIN_VIABLE_LLM_CALL_S, min(per_call_caps))`, and added an early `break` when `min(per_call_caps) < _MIN_VIABLE_LLM_CALL_S` so the loop exits gracefully rather than firing a doomed call.
+  2. `propose_isar_skeletons` fallback (no outlines yet): replaced the `max(3, ...)` clamp with a `if remaining < _MIN_VIABLE_LLM_CALL_S: return out` early exit.
+  3. `deadline.remaining_int(min_=3)` → `min_=_MIN_VIABLE_LLM_CALL_S`.
+- The bench's behavior is unchanged: a goal that would previously have errored with ReadTimeout will now (in most cases) return `success=False` because the planner ran out of viable LLM-call budget before producing a verified outline. Net effect on the strict-pass count is zero (these were already counted as failures), but the logs no longer show false `❌ planner error` markers and the failure mode is correctly attributed.
+
+### Verification
+Both files parse via `ast.parse`. Import chain checked: `from planner.goals import _run_theory_with_timeout` works without circular import (goals.py does not import from skeleton.py).
+
+**Open: re-sweep on `hard_25.txt` to confirm.** Pre-F15/F16 sweep result was 13/25 strict-pass with 2 wall-time overruns (>4× budget) and 7 ❌ ReadTimeout errors. Post-F15/F16 expected: same or higher strict-pass count, max wall-time bounded close to T=180s, ReadTimeout errors converted to clean `success=False` outcomes.
