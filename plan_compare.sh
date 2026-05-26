@@ -4,7 +4,9 @@
 #
 # Usage:
 #   ./plan_compare.sh <absolute-goal-file>
-# Env vars: MODEL, TIMEOUT, K, TEMPS, OUT_ROOT
+# Env vars: MODEL, TIMEOUT, K, TEMPS, OUT_ROOT, EXTRA_FLAGS
+#   EXTRA_FLAGS — additional flags passed verbatim to `planner.experiments bench`
+#                 on BOTH sides. Use to enable e.g. `--lib-templates --context-hints`.
 set -u
 cd "$(dirname "$0")"
 ROOT="$(pwd -P)"
@@ -15,6 +17,7 @@ MODEL="${MODEL:-ollama:qwen2.5-coder:32b}"
 TIMEOUT="${TIMEOUT:-120}"
 K="${K:-3}"
 TEMPS="${TEMPS:-0.35,0.55,0.85}"
+EXTRA_FLAGS="${EXTRA_FLAGS:-}"
 OUT_ROOT="${OUT_ROOT:-$ROOT/planner_comparison}"
 LOG_DIR="$OUT_ROOT/_logs"
 mkdir -p "$OUT_ROOT" "$LOG_DIR"
@@ -28,7 +31,8 @@ esac
 
 for which in baseline solution; do
   log="$LOG_DIR/${which}.log"
-  echo "── planner.${which} (goal-file=$(basename "$GOALS"), model=$MODEL, timeout=${TIMEOUT}s, k=$K) → $log"
+  echo "── planner.${which} (goal-file=$(basename "$GOALS"), model=$MODEL, timeout=${TIMEOUT}s, k=$K, extra='${EXTRA_FLAGS}') → $log"
+  # EXTRA_FLAGS is intentionally unquoted so multi-word values word-split into args.
   (cd "$ROOT/$which" && python -u -m planner.experiments bench \
       --file "$GOALS" \
       --mode auto \
@@ -36,6 +40,7 @@ for which in baseline solution; do
       --strict-no-sorry --verify \
       --timeout "$TIMEOUT" \
       --model "$MODEL" \
+      $EXTRA_FLAGS \
       --trace) > "$log" 2>&1
   rc=$?
   if [ $rc -ne 0 ]; then
