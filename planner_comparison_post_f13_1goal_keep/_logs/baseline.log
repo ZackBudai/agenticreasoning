@@ -1,0 +1,28 @@
+server "planner" = 127.0.0.1:45797 (password "0d7c9d1a-9fa6-4736-99a0-16c60272d11f")
+session_id: [TaskOK(response_type=<IsabelleResponseType.OK: 'OK'>, response_body=Task(task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=None), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Pure/Pure', pos=None, task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=117), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Misc/Tools', pos=None, task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=118), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session HOL/HOL (main)', pos=None, task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=122), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Pure/Pure', pos=None, task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=117), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Misc/Tools', pos=None, task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=118), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session HOL/HOL (main)', pos=None, task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=122), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Starting session HOL ...', pos=None, task='878e6af5-9aab-43c2-8558-0e87888a59c8'), response_length=125), SessionStartRegularResponse(response_type=<IsabelleResponseType.FINISHED: 'FINISHED'>, response_body=SessionStartRegularResult(task='878e6af5-9aab-43c2-8558-0e87888a59c8', session_id='17fad284-f14c-4172-ba0b-086400c395e0', tmp_dir='/tmp/isabelle-zack/server_session9840072787415578038'), response_length=174)] | session: HOL
+
+=== Planner suite: smoke_goal2_only (1 goals) ===
+[mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict] (run 1/1) [1/1] (∃x. P x ∧ Q x) ⟶ (∃x. P x)
+[planner] ▶ goal: (∃x. P x ∧ Q x) ⟶ (∃x. P x)
+[planner]   mode=auto k=1 timeout=60s repairs=True
+[planner]   outline chars=167 fills=1 failed_holes=0
+Current proof outline:
+lemma "(∃x. P x ∧ Q x) ⟶ (∃x. P x)"
+proof -
+  assume h: "∃x. P x ∧ Q x"
+  obtain x where "P x ∧ Q x" using h by blast
+  then have "P x" by simp
+  thus "∃x. P x" 
+
+qed
+
+[planner]   verifying with Isabelle…
+[planner]   verify=fail
+[planner]   done in 7.19s | success=False had_sorry=False verified_ok=False
+
+=== Planner Benchmark Report ===
+Suite:  smoke_goal2_only
+Config: mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict
+  Success: 0 / 1  (0.0%)
+  Median time (all): 7.19s | Median fills: 1
+CSV → datasets/planner_results/20260526-162938-smoke_goal2_only-mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict.csv

@@ -4,7 +4,10 @@ import re
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FuturesTimeout
 from typing import Iterable, List, Optional, Tuple
 
-from prover.isabelle_api import build_theory, last_print_state_block, run_theory, finished_ok
+from prover.isabelle_api import (
+    build_theory, last_print_state_block, run_theory, finished_ok,
+    _get_field, _normalize_type, _decode_body_to_dict,
+)
 
 # --- Constants ----------------------------------------------------------------
 _LLM_SUBGOAL_MARK = "[LLM_SUBGOAL]"
@@ -12,6 +15,68 @@ _LLM_SUBGOAL_RAW_MARK = "[LLM_SUBGOAL_RAW]"
 _LLM_VARS_MARK = "[LLM_VARS]"
 _ISA_FAST_TIMEOUT_S = int(os.getenv("ISABELLE_FAST_TIMEOUT_S", "12"))
 _ISA_VERIFY_TIMEOUT_S = int(os.getenv("ISABELLE_VERIFY_TIMEOUT_S", "30"))
+
+
+def strict_verify_responses(resps) -> Tuple[bool, str]:
+    """Strict verifier shared by Fill (`_verify_full_proof`) and the bench harness
+    (`_verify_full_isar`).
+
+    Returns (ok, diag). A proof is OK iff the last FINISHED frame reports
+    `ok=true` (or `result='ok'`) AND no error-kind messages appear in any
+    FINISHED body's `nodes[*].messages[*]`. This matches the actual shape
+    emitted by the Isabelle 2025 client — `finished_ok` already reads the same
+    FINISHED frames for the OK signal; this function adds the error scan on top.
+
+    F13: the previous implementation looked for a top-level JSON object with
+    "ok" and "errors" keys as siblings, which the current client never emits,
+    so verification fell through to legacy markers, which also never matched,
+    so every proof was rejected as "inconclusive" — that was the actual cause
+    of the F2-era `had_sorry=False AND verified_ok=False` failure mode that
+    kept resurfacing.
+    """
+    finished_objs: List[dict] = []
+    all_errors: List[str] = []
+
+    for r in (resps or []):
+        rtype = _normalize_type(_get_field(r, ("response_type", "type", "kind", "tag", "name")))
+        obj = _decode_body_to_dict(_get_field(r, ("response_body", "body", "message", "payload")))
+        if not isinstance(obj, dict):
+            continue
+        if rtype == "FINISHED":
+            finished_objs.append(obj)
+            # Scan nested per-node messages for error-kind entries.
+            for node in (obj.get("nodes") or []):
+                for m in (node.get("messages") or []):
+                    if str(m.get("kind", "")).lower() == "error":
+                        all_errors.append(str(m.get("message", "Unknown error")))
+        elif rtype == "ERROR" or str(obj.get("kind", "")).lower() == "error":
+            all_errors.append(str(obj.get("message", obj)))
+
+    is_ok = False
+    if finished_objs:
+        last = finished_objs[-1]
+        is_ok = bool(last.get("ok", False)) or str(last.get("result", "")).lower() == "ok"
+        if str(last.get("timeout", "")).lower() in ("1", "true", "yes"):
+            is_ok = False
+
+    if is_ok and not all_errors:
+        return True, ""
+    if all_errors:
+        return False, "Isabelle reported errors:\n" + "\n".join(all_errors[:5])
+    if not finished_objs:
+        # Legacy fallback: scan raw bodies for *** Error markers.
+        all_txt_chunks: List[str] = []
+        for r in (resps or []):
+            body = getattr(r, "response_body", None)
+            if isinstance(body, bytes):
+                all_txt_chunks.append(body.decode(errors="replace"))
+            elif isinstance(body, str):
+                all_txt_chunks.append(body)
+        all_txt = "\n".join(all_txt_chunks)
+        if any(e in all_txt for e in ("*** Error:", "*** Outer syntax error", "*** Failed")):
+            return False, f"[Legacy error]\n{all_txt[-1000:]}"
+        return False, "Verification inconclusive: no FINISHED frame and no legacy markers."
+    return False, "Last FINISHED frame did not report ok=true."
 
 # === Isabelle interaction ======================================================
 
@@ -31,13 +96,23 @@ def _run_theory_with_timeout(isabelle, session: str, thy: List[str], *, timeout_
 
 
 def _verify_full_proof(isabelle, session: str, text: str) -> bool:
-    """Return True iff the full Isar text checks under _ISA_VERIFY_TIMEOUT_S."""
+    """Return True iff the full Isar text checks under _ISA_VERIFY_TIMEOUT_S.
+
+    Uses the same strict structured-error verifier as the bench harness
+    (`strict_verify_responses`) so Fill's success signal can't disagree with
+    the final bench-level verification (was the cause of `had_sorry=False AND
+    verified_ok=False` false positives).
+    """
     try:
         thy = build_theory(text.splitlines(), add_print_state=False, end_with=None)
         result = _run_theory_with_timeout(isabelle, session, thy, timeout_s=_ISA_VERIFY_TIMEOUT_S)
-        ok, _ = finished_ok(result)
+        ok, diag = strict_verify_responses(result)
+        if not ok and os.environ.get("DEBUG_VERIFY", "0") in ("1", "true", "True"):
+            print(f"[verify-debug] _verify_full_proof rejected:\n--- TEXT ---\n{text}\n--- DIAG ---\n{diag}\n--- END ---")
         return ok
-    except Exception:
+    except Exception as ex:
+        if os.environ.get("DEBUG_VERIFY", "0") in ("1", "true", "True"):
+            print(f"[verify-debug] _verify_full_proof raised: {type(ex).__name__}: {ex}")
         return False
 
 

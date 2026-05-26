@@ -11,6 +11,7 @@ import hashlib
 from planner.skeleton import (
     Skeleton, find_sorry_spans, propose_isar_skeleton, propose_isar_skeleton_diverse_best,
 )
+from planner.budget import Deadline, DeadlineExceeded
 from planner.repair import try_cegis_repairs, regenerate_whole_proof, _APPLY_OR_BY as _TACTIC_LINE_RE
 from prover.config import ISABELLE_SESSION
 from prover.isabelle_api import (
@@ -190,6 +191,125 @@ def _nearest_sorry_span(spans: List[Tuple[int, int]], target_s: int) -> Optional
         return None
     return min(spans, key=lambda sp: abs(sp[0] - target_s))
 
+
+def _line_offset_1based(text: str, line_1based: int) -> Tuple[int, int]:
+    """Return (start_offset, end_offset) of the 1-based line in `text` (end exclusive)."""
+    idx = line_1based - 1
+    if idx < 0:
+        return (0, 0)
+    pieces = text.splitlines(keepends=True)
+    if idx >= len(pieces):
+        return (len(text), len(text))
+    start = sum(len(pieces[i]) for i in range(idx))
+    end = start + len(pieces[idx])
+    return (start, end)
+
+
+_DIRECT_FINISHERS = ("by blast", "by auto", "by simp", "by metis", "by force", "by fastforce", "by presburger", "by argo", "by linarith")
+
+
+def _try_prover_direct(isabelle, session: str, goal: str, model: Optional[str],
+                       deadline: "Deadline", *, trace: bool = False) -> Optional[str]:
+    """F11 (hybrid fast path): try to close `goal` without invoking outline generation.
+
+    Stage A: cheap one-shot finishers (`by blast/auto/simp/metis/force/...`) — typically 2-5s
+             each. Most propositional + simple quantifier goals fall here.
+    Stage B: if no finisher works, call `prove_goal` (beam-search prover with sledgehammer)
+             with a longer sledge timeout (20s).
+
+    Both stages strict-verify the resulting proof. Total budget ~40% of remaining deadline.
+    """
+    rem = deadline.remaining_int(cap=120, min_=1)
+    if rem < 8:
+        return None
+
+    # ---- Stage A: cheap one-shot finishers ----
+    # Each tactic only needs a few seconds; bail as soon as one verifies.
+    for tac in _DIRECT_FINISHERS:
+        if deadline.remaining() < 5:
+            break
+        candidate = f'lemma "{goal}"\n  {tac}'
+        try:
+            if _verify_full_proof(isabelle, session, candidate):
+                if trace:
+                    print(f"[planner] F11 stage-A solved with `{tac}`.")
+                return candidate
+        except Exception:
+            continue
+
+    # ---- Stage B: full prover (beam + sledge) ----
+    budget = max(8, min(90, int(rem * 0.40)))
+    if budget < 10 or deadline.remaining() < budget:
+        return None
+    try:
+        res = prove_goal(
+            isabelle, session, goal, model_name_or_ensemble=model,
+            beam_w=3, max_depth=6, hint_lemmas=6, timeout=budget,
+            models=None, save_dir=None, use_sledge=True, sledge_timeout=20,
+            sledge_every=1, trace=trace, use_color=False, use_qc=False,
+            qc_timeout=2, qc_every=1, use_np=False, np_timeout=5, np_every=2,
+            facts_limit=8, do_minimize=False, minimize_timeout=8,
+            do_variants=True, variant_timeout=6, variant_tries=24,
+            enable_reranker=True,
+        )
+    except Exception as ex:
+        if trace:
+            print(f"[planner] F11 stage-B raised: {type(ex).__name__}: {ex}")
+        return None
+    if not res.get("success"):
+        if trace:
+            print(f"[planner] F11 stage-B: prover returned success=False (keys={list(res.keys())})")
+        return None
+    steps = [str(s) for s in res.get("steps", [])]
+    tactics = [t for t in steps if not t.lstrip().startswith("lemma ")]
+    if not tactics:
+        if trace:
+            print(f"[planner] F11 stage-B: success=True but no non-lemma tactics in steps={steps!r}")
+        return None
+    body = "\n  ".join(t.strip() for t in tactics)
+    proof_text = f'lemma "{goal}"\n  {body}'
+    last = tactics[-1].strip()
+    if not (last.startswith("by ") or last == "done"):
+        proof_text += "\n  done"
+    try:
+        if _verify_full_proof(isabelle, session, proof_text):
+            if trace:
+                print(f"[planner] F11 stage-B solved with prover ({len(tactics)} tactics).")
+            return proof_text
+        else:
+            if trace:
+                print(f"[planner] F11 stage-B: prover PROVED but strict-verify rejected reconstructed proof:\n--- BEGIN ---\n{proof_text}\n--- END ---")
+    except Exception as ex:
+        if trace:
+            print(f"[planner] F11 stage-B strict-verify raised: {type(ex).__name__}: {ex}")
+        return None
+    return None
+
+
+def _classify_earliest_failure(isabelle, session: str, full_text: str,
+                               spans: List[Tuple[int, int]]) -> Tuple[Optional[int], Optional[Tuple[int, int]]]:
+    """F4: Classify Isabelle's earliest reported error against the current sorry spans.
+
+    Returns (error_line_1based, containing_sorry_span).
+    - If text verifies cleanly → (None, None).
+    - If earliest error is on a line that overlaps a sorry → (line, that_span).
+    - If earliest error is on a non-sorry line → (line, None) — caller should route to repair.
+    """
+    try:
+        _, errs = _quick_state_and_errors(isabelle, session, full_text)
+    except Exception:
+        return None, None
+    err_lines = _extract_error_lines(errs)
+    if not err_lines:
+        return None, None
+    line = min(err_lines)
+    lo, hi = _line_offset_1based(full_text, line)
+    for sp in spans:
+        s, _ = sp
+        if lo <= s < hi:
+            return line, sp
+    return line, None
+
 # ============================================================================
 # Repair
 # ============================================================================
@@ -227,7 +347,8 @@ def _tactic_spans_topdown(text: str) -> List[Tuple[int, int]]:
     return spans
 
 def _repair_failed_proof_topdown(isa, session, full: str, goal_text: str, model: Optional[str],
-                                 left_s, max_repairs_per_hole: int, trace: bool) -> Tuple[str, bool]:
+                                 left_s, max_repairs_per_hole: int, trace: bool,
+                                 *, deadline: Optional[Deadline] = None) -> Tuple[str, bool]:
     """Walk tactics from top; attempt CEGIS-repair on the first failing one.
 
     This must never crash the UI route. Timeouts / broken Isabelle responses are treated as
@@ -239,6 +360,8 @@ def _repair_failed_proof_topdown(isa, session, full: str, goal_text: str, model:
 
     i = 0
     while i < len(t_spans) and left_s() > 3.0:
+        if deadline is not None and deadline.expired():
+            return full, False
         span = t_spans[i]
         try:
             st = _print_state_before_hole(isa, session, full, span, trace)
@@ -251,13 +374,23 @@ def _repair_failed_proof_topdown(isa, session, full: str, goal_text: str, model:
 
         per_budget = min(30.0, max(15.0, left_s() * 0.33))
 
+        # F5: try_cegis_repairs now runs ONE stage per call. Escalate stage 1 → 2 here.
+        patched, applied = full, False
         try:
-            patched, applied, _ = try_cegis_repairs(
-                full_text=full, hole_span=span, goal_text=eff_goal, model=model,
-                isabelle=isa, session=session, repair_budget_s=per_budget,
-                max_ops_to_try=max_repairs_per_hole, beam_k=2,
-                allow_whole_fallback=False, trace=trace, resume_stage=0,
-            )
+            for stg in (1, 2):
+                if deadline is not None and deadline.expired():
+                    break
+                if left_s() <= 6.0:
+                    break
+                patched, applied, _ = try_cegis_repairs(
+                    full_text=full, hole_span=span, goal_text=eff_goal, model=model,
+                    isabelle=isa, session=session, repair_budget_s=per_budget,
+                    max_ops_to_try=max_repairs_per_hole, beam_k=2,
+                    allow_whole_fallback=False, trace=trace, resume_stage=stg,
+                    deadline=deadline,
+                )
+                if applied and patched != full:
+                    break  # stop escalating once a stage produced a change
         except (TimeoutError, _FuturesTimeout, ValueError) as ex:
             # TimeoutError: verifier timed out; ValueError: isabelle_client returned unexpected/empty response
             if trace:
@@ -452,8 +585,8 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
     isa = get_isabelle_client(server_info)
     session = _extract_session_id(isa.session_start(session=ISABELLE_SESSION))
 
-    t0 = time.monotonic()
-    left_s = lambda: max(0.0, timeout - (time.monotonic() - t0))
+    deadline = Deadline(float(timeout))
+    left_s = deadline.remaining
 
     restart_count = 0
 
@@ -477,9 +610,29 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
         isa, session, proc = isa2, session2, proc2
 
     try:
-        # Generate outline
+        # F11: direct-prover fast path. Many goals (esp. ones sledge can close
+        # in one shot) don't need outline+Fill at all; that overhead only adds
+        # failure modes. Try the prover directly first.
+        if mode == "auto":
+            try:
+                direct_proof = _try_prover_direct(isa, session, goal, model, deadline, trace=trace)
+            except (TimeoutError, _FuturesTimeout, ValueError) as ex:
+                _restart_isabelle("try_prover_direct", ex)
+                direct_proof = None
+            except Exception as ex:
+                if trace:
+                    print(f"[planner] F11 direct-prover crashed: {type(ex).__name__}: {ex}")
+                direct_proof = None
+            if direct_proof is not None:
+                if trace:
+                    print("[planner] F11 direct-prover path solved the goal; skipping outline+Fill.")
+                return PlanAndFillResult(True, direct_proof, [direct_proof], [])
+
+        # Generate outline (F9: bounded by per-goal deadline)
         if legacy_single_outline:
-            full = propose_isar_skeleton(goal, model=model, temp=0.35, force_outline=(mode == "outline")).text
+            single_to = max(3, min(30, deadline.remaining_int(cap=30, min_=3)))
+            full = propose_isar_skeleton(goal, model=model, temp=0.35, force_outline=(mode == "outline"),
+                                         timeout_s=single_to).text
         else:
             temps = tuple(outline_temps) if outline_temps else (0.35, 0.55, 0.85)
             k = int(outline_k) if outline_k is not None else 3
@@ -489,6 +642,7 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                 context_hints=context_hints, lib_templates=lib_templates,
                 alpha=alpha, beta=beta, gamma=gamma, hintlex_path=hintlex_path,
                 hintlex_top=hintlex_top,
+                deadline=deadline,
             )
             full = best.text
 
@@ -506,7 +660,7 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                 _restart_isabelle("verify_full_proof", ex)
 
             if repairs and left_s() > 6.0:
-                full, ok = _repair_failed_proof_topdown(isa, session, full, goal, model, left_s, max_repairs_per_hole, trace)
+                full, ok = _repair_failed_proof_topdown(isa, session, full, goal, model, left_s, max_repairs_per_hole, trace, deadline=deadline)
                 if ok:
                     return PlanAndFillResult(True, full, [], [])
 
@@ -528,11 +682,24 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
         _skip_fill_logged_once: set[Tuple[str, int]] = set()
 
         focused_hole_key: Optional[str] = None
+        # F7: cap fresh-outline regenerations so the loop can't restart indefinitely.
+        _MAX_FRESH_OUTLINES = 2
+        fresh_outline_count = 0
 
         while "sorry" in full and left_s() > 0:
+            if deadline.expired():
+                if trace:
+                    print(f"[planner] Deadline expired ({timeout}s); stopping main loop.")
+                break
             spans = find_sorry_spans(full)
             if not spans:
                 break
+            # F6: prune stale entries — fingerprints for sorrys that no longer exist.
+            current_keys = {_hole_fingerprint(full, sp) for sp in spans}
+            for stale in [k for k in repair_progress if k not in current_keys]:
+                repair_progress.pop(stale, None)
+            for k in [k for k in stage_tries if k[0] not in current_keys]:
+                stage_tries.pop(k, None)
 
             span = None
             if focused_hole_key is not None:
@@ -542,14 +709,33 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                         break
                 if span is None:
                     if trace:
-                        print(f"[fill] Focused hole @{focused_hole_key} was closed. Moving to first hole.")
+                        print(f"[fill] Focused hole @{focused_hole_key} was closed. Moving on.")
                     focused_hole_key = None
 
             if span is None:
-                span = spans[0]
+                # F4: spec requires "always focus on the earliest failure point".
+                err_line, err_span = _classify_earliest_failure(isa, session, full, spans)
+                if err_span is not None:
+                    if trace:
+                        print(f"[planner] Earliest failure @ line {err_line} is at sorry; focusing that span.")
+                    span = err_span
+                elif err_line is not None:
+                    # Earliest error is on a non-sorry line (structural). Route the nearest
+                    # sorry directly to repair (skip Fill, which can't help structural errors).
+                    err_lo, _ = _line_offset_1based(full, err_line)
+                    span = _nearest_sorry_span(spans, err_lo) or spans[0]
+                    hk_pre = _hole_fingerprint(full, span)
+                    if repair_progress.get(hk_pre, 0) < 1:
+                        repair_progress[hk_pre] = 1
+                        if trace:
+                            print(f"[planner] Earliest failure @ line {err_line} is non-sorry; starting at repair stage 1.")
+                else:
+                    span = spans[0]
 
             hole_key = _hole_fingerprint(full, span)
-            per_hole_budget = int(max(5, left_s() / max(1, len(spans))))
+            # Cap per-hole budget at half the remaining deadline so Fill leaves room for
+            # the subsequent CEGIS repair pass in the same iteration (F1 enforcement).
+            per_hole_budget = int(max(5, min(deadline.remaining() * 0.5, left_s() / max(1, len(spans)))))
             start_stage = repair_progress.get(hole_key, 0)
 
             # Always try fill first unless we're in escalated repair stages
@@ -623,6 +809,7 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                         repair_budget_s=min(30.0, max(15.0, left_s() * 0.33)),
                         max_ops_to_try=max_repairs_per_hole, beam_k=2,
                         allow_whole_fallback=False, trace=trace, resume_stage=current_stage,
+                        deadline=deadline,
                     )
                 except (TimeoutError, _FuturesTimeout, ValueError) as ex:
                     _restart_isabelle("try_cegis_repairs", ex)
@@ -644,6 +831,54 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                             continue
                     except (TimeoutError, _FuturesTimeout, ValueError) as ex:
                         _restart_isabelle("verify_full_proof_after_repair", ex)
+
+                    # F3: Per spec, "after any repair edit, run Fill again on any newly
+                    # introduced sorry placeholders". Run Fill on each new sorry (location
+                    # not present in pre-repair full), then re-verify.
+                    pre_repair_spans = {sp for sp in find_sorry_spans(full)}
+                    new_spans = [sp for sp in find_sorry_spans(patched) if sp not in pre_repair_spans]
+                    if new_spans and not deadline.expired() and left_s() > 6:
+                        if trace:
+                            print(f"[repair] Re-running Fill on {len(new_spans)} new sorrys from repair patch...")
+                        new_full = patched
+                        any_progress = False
+                        for ns in new_spans:
+                            if deadline.expired() or left_s() < 6:
+                                break
+                            cur_spans = find_sorry_spans(new_full)
+                            ns_now = _nearest_sorry_span(cur_spans, ns[0]) if cur_spans else None
+                            if ns_now is None:
+                                continue
+                            sub_budget = int(max(5, min(deadline.remaining(), left_s() / max(1, len(new_spans)))))
+                            try:
+                                cand, ok, _scr = _fill_one_hole(
+                                    isa, session, new_full, ns_now, goal_text, model,
+                                    per_hole_timeout=sub_budget, trace=trace,
+                                )
+                            except (TimeoutError, _FuturesTimeout, ValueError) as ex:
+                                _restart_isabelle("fill_after_repair", ex)
+                                continue
+                            except Exception as ex:
+                                if trace:
+                                    print(f"[repair] Fill-after-repair crashed: {type(ex).__name__}: {ex}")
+                                continue
+                            if ok and cand != new_full:
+                                new_full = cand
+                                any_progress = True
+                        if any_progress:
+                            try:
+                                if _verify_full_proof(isa, session, new_full):
+                                    if trace:
+                                        print("[repair] Fill-after-repair closed the proof.")
+                                    full = new_full
+                                    repair_progress.clear()
+                                    stage_tries.clear()
+                                    focused_hole_key = None
+                                    continue
+                            except (TimeoutError, _FuturesTimeout, ValueError) as ex:
+                                _restart_isabelle("verify_after_fill_after_repair", ex)
+                            # Keep partial progress so the next iteration sees fewer sorrys.
+                            patched = new_full
 
                     # Unverified change: count attempt and decide escalation
                     key = (hole_key, start_stage)
@@ -673,7 +908,8 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                                 new_full, ok_re, _ = regenerate_whole_proof(
                                     full_text=full, goal_text=goal_text, model=model,
                                     isabelle=isa, session=session, budget_s=regen_budget,
-                                    trace=trace, prior_outline_text=full
+                                    trace=trace, prior_outline_text=full,
+                                    deadline=deadline,
                                 )
                             except (TimeoutError, _FuturesTimeout, ValueError) as ex:
                                 _restart_isabelle("regenerate_whole_proof", ex)
@@ -690,8 +926,13 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                                 focused_hole_key = None
                                 continue
 
+                            # F7: cap fresh-outline regenerations so we don't restart indefinitely.
+                            if fresh_outline_count >= _MAX_FRESH_OUTLINES:
+                                if trace:
+                                    print(f"[repair] Whole regen failed and fresh-outline cap ({_MAX_FRESH_OUTLINES}) reached; giving up.")
+                                break
                             if trace:
-                                print("[repair] Whole regeneration failed to verify; proposing a fresh outline…")
+                                print(f"[repair] Whole regeneration failed; proposing fresh outline #{fresh_outline_count + 1}…")
                             temps = tuple(outline_temps) if outline_temps else (0.35, 0.55, 0.85)
                             k = int(outline_k) if outline_k is not None else 3
                             best, _ = propose_isar_skeleton_diverse_best(
@@ -699,8 +940,10 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
                                 force_outline=True, priors_path=priors_path, context_hints=context_hints,
                                 lib_templates=lib_templates, alpha=alpha, beta=beta, gamma=gamma,
                                 hintlex_path=hintlex_path, hintlex_top=hintlex_top,
+                                deadline=deadline,
                             )
                             full = best.text
+                            fresh_outline_count += 1
                             repair_progress.clear()
                             stage_tries.clear()
                             focused_hole_key = None

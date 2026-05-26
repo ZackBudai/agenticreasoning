@@ -1,0 +1,26 @@
+goal,success,elapsed_s,mode,model,outline_chars,fills,failed_holes,had_sorry,verified_ok
+¬ (∀x∈A. P x) ⟷ (∃x∈A. ¬ P x),False,184.2506,auto,ollama:qwen2.5-coder:7b,277,0,0,True,True
+(∃x. P x ∧ Q x) ⟶ (∃x. P x),False,37.3361,auto,ollama:qwen2.5-coder:7b,166,0,1,False,False
+(∀x. P x ⟶ Q) ⟶ ((∃x. P x) ⟶ Q),False,186.7321,auto,ollama:qwen2.5-coder:7b,218,1,0,True,True
+(∀x∈A. P x ∧ Q x) ⟷ ((∀x∈A. P x) ∧ (∀x∈A. Q x)),False,87.8999,auto,ollama:qwen2.5-coder:7b,428,0,1,False,False
+(∃x. P x ∨ Q x) ⟷ ((∃x. P x) ∨ (∃x. Q x)),False,79.3779,auto,ollama:qwen2.5-coder:7b,437,0,1,False,False
+(¬ ∃x. P x) ⟷ (∀x. ¬ P x),False,186.9568,auto,ollama:qwen2.5-coder:7b,239,0,0,True,True
+(∀x. P x ⟶ R) ⟶ ((∃x. P x) ⟶ R),False,189.7596,auto,ollama:qwen2.5-coder:7b,225,1,0,True,True
+(∃x. P x) ⟶ (∀y. P y ⟶ ∃z. P z),False,84.5060,auto,ollama:qwen2.5-coder:7b,578,0,1,False,False
+(∃x. P x) ⟶ (∃y. P y ∧ ∃z. P z),False,187.0156,auto,ollama:qwen2.5-coder:7b,251,0,0,True,True
+((P ⟶ Q) ∧ (Q ⟶ R)) ⟶ (P ⟶ R),False,189.4293,auto,ollama:qwen2.5-coder:7b,313,0,0,True,True
+(P ∧ (Q ∨ R)) ⟶ ((P ∧ Q) ∨ (P ∧ R)),False,187.0692,auto,ollama:qwen2.5-coder:7b,185,0,0,True,True
+(P ⟶ Q) ⟷ (¬ P ∨ Q),False,186.6708,auto,ollama:qwen2.5-coder:7b,227,0,0,True,True
+(P ∧ False) ⟶ Q,False,187.3755,auto,ollama:qwen2.5-coder:7b,147,1,0,True,True
+(P ⟶ (Q ⟶ R)) ⟷ ((P ∧ Q) ⟶ R),False,191.3089,auto,ollama:qwen2.5-coder:7b,278,0,0,True,True
+(∀x. P x) ⟶ (∀y. P y),False,187.1929,auto,ollama:qwen2.5-coder:7b,163,0,0,True,True
+(A ∩ (B ∪ C)) = (A ∩ B) ∪ (A ∩ C),False,189.2547,auto,ollama:qwen2.5-coder:7b,212,0,0,True,True
+A ∪ (B ∩ C) = (A ∪ B) ∩ (A ∪ C),False,191.8338,auto,ollama:qwen2.5-coder:7b,224,0,0,True,True
+(A - B) ∪ (A ∩ B) = A,False,203.0944,auto,ollama:qwen2.5-coder:7b,245,1,0,True,True
+(A ∩ B) ∪ (A - B) = A,False,209.1118,auto,ollama:qwen2.5-coder:7b,243,1,0,True,True
+A ⊆ B ⟶ (A ∩ B = A),False,187.1844,auto,ollama:qwen2.5-coder:7b,171,0,0,True,True
+A ⊆ B ⟶ (A ∪ B = B),False,187.2438,auto,ollama:qwen2.5-coder:7b,197,0,0,True,True
+(A ⊆ B ∧ B ⊆ C) ⟶ (A ⊆ C),False,186.9998,auto,ollama:qwen2.5-coder:7b,140,0,0,True,True
+inj f ⟹ finite A ⟹ card (f ` A) = card A,False,77.6536,auto,ollama:qwen2.5-coder:7b,349,0,1,False,False
+finite A ⟹ card (A ∪ B) + card (A ∩ B) = card A + card B,False,186.9837,auto,ollama:qwen2.5-coder:7b,209,0,0,True,True
+finite A ⟹ finite B ⟹ card (A × B) = card A * card B,False,187.9586,auto,ollama:qwen2.5-coder:7b,272,1,0,True,True

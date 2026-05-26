@@ -1,0 +1,149 @@
+Loading 8 goals from solution/datasets/sets.txt...
+  8 goals loaded.
+
+Starting Isabelle server...
+  server "comparison" = 127.0.0.1:36819 (password "1988a7f5-ae25-48c3-85bc-f021f6d06dfd")
+/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/compare.py:51: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+  d = body.dict() if hasattr(body, "dict") else {}
+  session_id: 303ec46d-ca0d-4f2e-8530-24125a9b3a5d
+
+Running BASELINE (baseline/ prover, model=ollama:qwen2.5-coder:32b, timeout=30s)...
+
+▶ Goal: {x} ∪ A = insert x A
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by simp', 'by auto', 'by blast', 'by force', 'by fastforce']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by blast, sledge:by force, sledge:by fastforce, llm:by clarsimp, llm:by meson]
+  baseline ✗ (48.7s): {x} ∪ A = insert x A
+
+▶ Goal: x ∈ insert y A ⟷ (x = y ∨ x ∈ A)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (metis insert_iff), llm:by (rule iffI, standard; clarsimp)]
+  baseline ✗ (81.5s): x ∈ insert y A ⟷ (x = y ∨ x ∈ A)
+
+▶ Goal: A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (simp add: Int_Un_distrib), llm:by meson]
+  baseline ✗ (98.7s): A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)
+
+▶ Goal: A ⊆ A ∪ B
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  baseline ✗ (63.3s): A ⊆ A ∪ B
+
+▶ Goal: A ∩ B ⊆ A
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson, llm:by (rule subsetI)]
+  baseline ✗ (64.7s): A ∩ B ⊆ A
+
+▶ Goal: (A ⊆ B ∧ B ⊆ C) ⟹ A ⊆ C
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by metis, llm:by meson]
+  baseline ✗ (68.3s): (A ⊆ B ∧ B ⊆ C) ⟹ A ⊆ C
+
+▶ Goal: (A ⊆ B ∧ B ⊆ A) ⟹ A = B
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (rule subset_antisym)]
+  baseline ✗ (70.2s): (A ⊆ B ∧ B ⊆ A) ⟹ A = B
+
+▶ Goal: set (xs @ ys) = set xs ∪ set ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (rule set_append)]
+  baseline ✗ (79.7s): set (xs @ ys) = set xs ∪ set ys
+  Baseline: 0/8 proved → comparison/sets/baseline_results.thy
+
+Running SOLUTION (model=ollama:qwen2.5-coder:32b, timeout=120s)...
+
+▶ Goal: {x} ∪ A = insert x A
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger, llm:by (rule_tac x=x in insertI1)]
+  finish ✓ [llm] by simp  (2263ms)
+✔ PROVED
+  solution ✓ (77.7s): {x} ∪ A = insert x A
+
+▶ Goal: x ∈ insert y A ⟷ (x = y ∨ x ∈ A)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  finish ✓ [llm] by simp  (2379ms)
+✔ PROVED
+  solution ✓ (69.0s): x ∈ insert y A ⟷ (x = y ∨ x ∈ A)
+
+▶ Goal: A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson, llm:by (rule_tac x=… in exI, simp)]
+  finish × [llm] by simp  (2363ms)
+  finish ✓ [llm] by auto  (2116ms)
+✔ PROVED
+  solution ✓ (75.3s): A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)
+
+▶ Goal: A ⊆ A ∪ B
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson, llm:by metis]
+  finish ✓ [llm] by simp  (2369ms)
+✔ PROVED
+  solution ✓ (68.3s): A ⊆ A ∪ B
+
+▶ Goal: A ∩ B ⊆ A
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson, llm:by (rule subsetI)]
+  finish ✓ [llm] by simp  (2381ms)
+✔ PROVED
+  solution ✓ (68.7s): A ∩ B ⊆ A
+
+▶ Goal: (A ⊆ B ∧ B ⊆ C) ⟹ A ⊆ C
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (rule subset_trans), llm:by meson]
+  finish × [llm] by simp  (2272ms)
+  finish ✓ [llm] by auto  (2093ms)
+✔ PROVED
+  solution ✓ (79.5s): (A ⊆ B ∧ B ⊆ C) ⟹ A ⊆ C
+
+▶ Goal: (A ⊆ B ∧ B ⊆ A) ⟹ A = B
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson, llm:by (rule antisym)]
+  finish × [llm] by simp  (2269ms)
+  finish ✓ [llm] by auto  (2204ms)
+✔ PROVED
+  solution ✓ (102.9s): (A ⊆ B ∧ B ⊆ A) ⟹ A = B
+
+▶ Goal: set (xs @ ys) = set xs ∪ set ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (rule_tac xs=xs and ys=ys in set_append), llm:by (induct xs, simp_all add: Un_assoc)]
+  finish ✓ [llm] by simp  (2265ms)
+✔ PROVED
+  solution ✓ (82.6s): set (xs @ ys) = set xs ∪ set ys
+  Solution: 8/8 proved → comparison/sets/solution_results.thy
+
+============================================================
+RESULTS SUMMARY (8 goals)
+============================================================
+Goal                                           Baseline  Solution
+-----------------------------------------------------------------
+  {x} ∪ A = insert x A                           failed    PROVED
+  x ∈ insert y A ⟷ (x = y ∨ x ∈ A)               failed    PROVED
+  A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)                failed    PROVED
+  A ⊆ A ∪ B                                      failed    PROVED
+  A ∩ B ⊆ A                                      failed    PROVED
+  (A ⊆ B ∧ B ⊆ C) ⟹ A ⊆ C                        failed    PROVED
+  (A ⊆ B ∧ B ⊆ A) ⟹ A = B                        failed    PROVED
+  set (xs @ ys) = set xs ∪ set ys                failed    PROVED
+-----------------------------------------------------------------
+  TOTAL                                            0/8      8/8
+
+Theory files written to comparison/sets/
+  Load in Isabelle: isabelle jedit -d comparison/sets baseline_results.thy
+  Or build session: isabelle build -d comparison/sets Comparison

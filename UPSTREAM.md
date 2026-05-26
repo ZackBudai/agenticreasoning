@@ -75,7 +75,7 @@ All files below were taken verbatim from https://github.com/zhehou/llm-isabelle 
 | `solution/planner/driver.py` | modified |
 | `solution/planner/experiments.py` | upstream |
 | `solution/planner/extract.py` | upstream |
-| `solution/planner/goals.py` | upstream |
+| `solution/planner/goals.py` | modified |
 | `solution/planner/priors.py` | upstream |
 | `solution/planner/prompts.py` | modified |
 | `solution/planner/repair.py` | modified |
@@ -98,7 +98,7 @@ All files below were taken verbatim from https://github.com/zhehou/llm-isabelle 
 | `solution/prover/minimize.py` | upstream |
 | `solution/prover/premises.py` | upstream |
 | `solution/prover/prompts.py` | modified |
-| `solution/prover/prover.py` | upstream |
+| `solution/prover/prover.py` | modified |
 | `solution/prover/ranker.py` | upstream |
 | `solution/prover/tactics.py` | upstream |
 | `solution/prover/train_premises.py` | upstream |

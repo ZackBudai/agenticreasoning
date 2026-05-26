@@ -28,3 +28,9 @@ Thumbs.db
 # Isabelle session build artifacts
 *.heap
 .isabelle/
+
+# Runtime JSONL logs (experiment/comparison .log files are kept)
+**/logs/*.log.jsonl
+
+# Scratch / debug
+**/tmp/

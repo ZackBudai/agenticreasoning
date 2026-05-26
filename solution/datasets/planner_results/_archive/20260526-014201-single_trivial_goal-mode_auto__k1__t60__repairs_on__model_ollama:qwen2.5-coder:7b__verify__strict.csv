@@ -1,0 +1,2 @@
+goal,success,elapsed_s,mode,model,outline_chars,fills,failed_holes,had_sorry,verified_ok
+(True ∧ P) ⟷ P,False,76.2390,auto,ollama:qwen2.5-coder:7b,189,0,1,False,False

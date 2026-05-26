@@ -6,6 +6,7 @@ import os
 import re
 from functools import lru_cache
 from planner.prompts import SKELETON_PROMPT
+from planner.budget import Deadline
 import requests
 
 # Pull defaults from your existing prover/config.py
@@ -17,6 +18,11 @@ from prover.config import (
     TEMP as OLLAMA_TEMP,
     TOP_P as OLLAMA_TOP_P,
 )
+
+# F9: cap one outline-gen LLM call so a slow goal can't burn the entire per-goal budget on outline generation alone.
+_OUTLINE_PER_CALL_CAP_S = 30
+# F9: cap total outline-gen wall time at this fraction of the global deadline.
+_OUTLINE_BUDGET_FRACTION = 0.35
 
 # Isabelle helpers (for quick sketch check)
 from prover.isabelle_api import build_theory, run_theory, last_print_state_block
@@ -607,6 +613,7 @@ def propose_isar_skeleton(
     *,
     force_outline: bool = False,
     hints: Optional[List[str]] = None,
+    timeout_s: Optional[int] = None,
 ) -> Skeleton:
     # Inject tiny hint list when available (keeps default behavior if None/empty)
     prompt = SKELETON_PROMPT.format(goal=goal)
@@ -616,7 +623,7 @@ def propose_isar_skeleton(
         prompt=prompt,
         model=model or DEFAULT_MODEL,
         temperature=temp,
-        timeout_s=OLLAMA_TIMEOUT_S,
+        timeout_s=int(timeout_s if timeout_s is not None else OLLAMA_TIMEOUT_S),
     )
     cleaned = _sanitize_outline(raw, goal=goal, force_outline=force_outline)
     return Skeleton(text=cleaned, holes=find_sorry_spans(cleaned))
@@ -629,18 +636,50 @@ def propose_isar_skeletons(
     k: Optional[int] = None,
     force_outline: bool = False,
     hints: Optional[List[str]] = None,
+    deadline: Optional[Deadline] = None,
+    outline_budget_s: Optional[float] = None,
 ) -> List[Skeleton]:
+    """Generate up to k diverse outlines. If `deadline` is given, each LLM call's
+    timeout is capped at `min(_OUTLINE_PER_CALL_CAP_S, outline_budget_s_remaining / k_left)`,
+    and we bail early once either the outline budget or the global deadline expires.
+    """
+    import time
+    t0 = time.monotonic()
     seen, out = set(), []
-    for t in temps:
+    temps_list = list(temps)
+    target_k = int(k) if k is not None else len(temps_list)
+    for idx, t in enumerate(temps_list):
+        # F9: respect both the global per-goal deadline AND the outline-only budget.
+        remaining_outlines = max(1, target_k - len(out))
+        if deadline is not None and deadline.expired():
+            break
+        if outline_budget_s is not None and (time.monotonic() - t0) >= outline_budget_s:
+            break
+
+        # Compute a tight timeout for this individual call.
+        per_call_caps = [_OUTLINE_PER_CALL_CAP_S, int(OLLAMA_TIMEOUT_S)]
+        if deadline is not None:
+            per_call_caps.append(deadline.remaining_int(cap=_OUTLINE_PER_CALL_CAP_S, min_=3))
+        if outline_budget_s is not None:
+            outline_left = max(3.0, outline_budget_s - (time.monotonic() - t0))
+            per_call_caps.append(max(3, int(outline_left / remaining_outlines)))
+        per_call_timeout = max(3, min(per_call_caps))
+
         prompt = SKELETON_PROMPT.format(goal=goal)
         if hints:
             prompt += "\nHINTS: Prefer using " + ", ".join(sorted(set(hints))) + " if applicable.\n"
-        raw = _generate_simple(
-            prompt=prompt,
-            model=model or DEFAULT_MODEL,
-            temperature=float(t),
-            timeout_s=OLLAMA_TIMEOUT_S,
-        )
+        try:
+            raw = _generate_simple(
+                prompt=prompt,
+                model=model or DEFAULT_MODEL,
+                temperature=float(t),
+                timeout_s=per_call_timeout,
+            )
+        except Exception:
+            # Treat as no proposal for this temp; continue to next or bail on deadline.
+            raw = ""
+        if not raw:
+            continue
         sk = Skeleton(text=_sanitize_outline(raw, goal=goal, force_outline=force_outline),
                       holes=[])
         sk.holes = find_sorry_spans(sk.text)
@@ -651,7 +690,12 @@ def propose_isar_skeletons(
         if k is not None and len(out) >= int(k):
             break
     if not out:
-        return [propose_isar_skeleton(goal, model=model, temp=0.3, force_outline=force_outline, hints=hints)]
+        # Fallback: at least one outline. Honor the deadline for the single call.
+        single_to = _OUTLINE_PER_CALL_CAP_S
+        if deadline is not None:
+            single_to = max(3, min(_OUTLINE_PER_CALL_CAP_S, deadline.remaining_int(cap=_OUTLINE_PER_CALL_CAP_S, min_=3)))
+        return [propose_isar_skeleton(goal, model=model, temp=0.3, force_outline=force_outline,
+                                      hints=hints, timeout_s=single_to)]
     return out
 
 def _lib_templates_for_goal(goal: str) -> List[Skeleton]:
@@ -728,6 +772,8 @@ def propose_isar_skeleton_diverse_best(
     # NEW: hint lexicon
     hintlex_path: Optional[str] = None,
     hintlex_top: int = 8,
+    # F9: per-goal deadline so outline gen can't blow past the budget.
+    deadline: Optional[Deadline] = None,
 ) -> Tuple[Skeleton, Dict[str, Any]]:
     """
     Generate K outlines, optionally inject context & hintlex hints, run one-shot sketch checks,
@@ -744,9 +790,16 @@ def propose_isar_skeleton_diverse_best(
         rec_hints += _hints_from_hintlex(goal, hintlex, top=hintlex_top)
     rec_hints = list(dict.fromkeys(rec_hints))[:12]  # stable de-dup + cap
 
-    # Outline candidates (LLM) + optional library templates
+    # Outline candidates (LLM) + optional library templates.
+    # F9: reserve _OUTLINE_BUDGET_FRACTION of the per-goal deadline for outline gen so
+    # later Fill/repair phases keep usable budget. Falls back to no outline-only cap
+    # if no deadline was provided.
+    outline_budget_s = None
+    if deadline is not None:
+        outline_budget_s = max(8.0, deadline.timeout_s * _OUTLINE_BUDGET_FRACTION)
     cands = propose_isar_skeletons(goal, model=model, temps=temps, k=k,
-                                   force_outline=force_outline, hints=rec_hints)
+                                   force_outline=force_outline, hints=rec_hints,
+                                   deadline=deadline, outline_budget_s=outline_budget_s)
     if lib_templates:
         cands = _lib_templates_for_goal(goal) + cands
 

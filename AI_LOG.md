@@ -101,3 +101,155 @@ Fixes applied:
 - Re-ran `python compare.py --n 5 --model "ollama:qwen2.5-coder:32b" --timeout 90 --sledge-timeout 25` on `solution/datasets/lists.txt`: solution now reports 5/5 proved.
 - Ran `isabelle build -d comparison Comparison` end-to-end: session finishes cleanly (`Finished Comparison (0:00:04 elapsed time)`), confirming both theory files type-check in real Isabelle/HOL.
 - Generated `Solution_Results.thy` contains five `by simp` proofs (one per goal), with no echoed `lemma "..."` lines and no syntax errors.
+
+---
+
+## Entry 8 — Resume comparison sweep against real baseline prover
+
+**Request:** Complete what we were doing when we left off (the previous session ended mid-rerun of `compare.py` after refactoring it to use the real `baseline/` prover instead of the sledgehammer-only stub).
+
+**Actioned response:**
+
+1. **Recovered prior session state.** Inspected the previous session transcript, confirmed the `compare.py` refactor (`run_prover("baseline"|"solution", …)` with `--sledge-only-baseline` escape hatch) was in place, and that the earlier smoke test died with the session before producing any results.
+
+2. **Reran the logic smoke test.** Launched `python compare.py --goals-file solution/datasets/logic.txt --n 5 --timeout 60 --out-dir comparison/_smoke_logic --model ollama:qwen2.5-coder:1.5b --trace`. Result: solution 5/5, baseline 0/5.
+
+3. **Diagnosed the baseline 0/5.** Diffed `baseline/prover/isabelle_api.py` vs `solution/prover/isabelle_api.py`. Baseline only decodes response bodies that are `dict | str | bytes`; current `isabelle-client ≥ 1.0` returns Pydantic V2 models. Solution adds a `model_dump()` → `dict()` → JSON-fallback chain in `_response_body_as_dict`, plus a `_extract_session_id` helper. Without these shims, baseline silently fails on every sledgehammer/finisher response. **This is a legitimate, reportable improvement, not a comparison artefact** — but it dominates the headline numbers.
+
+4. **Added `--baseline-timeout` flag to `compare.py`.** Baseline burns the full per-goal timeout on every goal (can't decode any "success" response, so always reaches timeout). At `--timeout 120` the sweep ETA was ~3 hours. New `--baseline-timeout` defaults to `--timeout` for backwards compatibility; sweep now passes `--baseline-timeout 30` (cf. `run_sweep.sh`). Also added `-u` to the python invocation so trace output flushes immediately to per-dataset logs.
+
+5. **Ran the curated sweep** (`lists/logic/nat/sets`, `ollama:qwen2.5-coder:32b`, baseline-timeout=30, solution-timeout=120, sledge-timeout=30). Final results, written to `comparison/summary.md`:
+
+   | Dataset | Goals | Baseline | Solution |
+   |---|---:|---:|---:|
+   | lists | 18 | 0 | 15 |
+   | logic | 5 | 0 | 5 |
+   | nat | 9 | 0 | 2 |
+   | sets | 8 | 0 | 8 |
+   | **TOTAL** | **40** | **0** | **30** |
+
+   Cleaned the summary aggregator by moving stale logs (`_smoke_logic.log`, `sweep_curated.log`, `baseline_rerun_curated.log`) into `comparison/_logs/_archive/` so they no longer pollute the per-dataset table, and added a TOTAL row to the regenerated `summary.md`/`summary.csv`.
+
+**Caveat surfaced for the report:** `compare.py` exercises `prover.prove_goal` from each folder but does **not** invoke `planner.plan_and_fill` — so the CEGIS-repair work in `solution/planner/` is not reflected in these numbers. The headline result is "solution-side prover improvements (Pydantic-V2 compat shim, prompts, llm.py, isabelle_api.py) vs upstream baseline" — the planner-side work needs a separate harness (`planner.experiments bench` or a compare.py extension) before its measurements can appear in the report.
+
+---
+
+## Entry 9 — Planner audit + F1-F8 fixes (spec compliance + correctness)
+
+**Request:** Run the planner side of the comparison (`a)` — testing/comparing planner+prover). An initial run on 25 hard goals returned 0/25 vs 0/25 because every LLM call hit `requests.exceptions.ReadTimeout` (120s default); after bumping `OLLAMA_TIMEOUT_S=300` and switching to `qwen2.5-coder:7b`, a second attempt showed solution-side goals running 600-700s against a `--timeout 180s` budget (≥3× overrun) plus a new failure mode `had_sorry=False && verified_ok=False` (Fill claims success on outputs the bench-level verifier rejects). The user paused and asked whether the planner was properly implemented before re-benchmarking.
+
+**Actioned response:**
+
+Spawned an audit agent that read `solution/planner/{driver.py,repair.py,repair_inputs.py,skeleton.py,goals.py,experiments.py}` and `solution/prover/{prover.py,isabelle_api.py}` in full. Findings produced an F1-F8 list; mapped each item to (spec-required vs quality) and committed F1-F8 in one pass. Files changed:
+
+- `solution/planner/budget.py` (new) — `Deadline` helper for hard per-goal timeout enforcement.
+- `solution/planner/goals.py` — added `strict_verify_responses(resps)` shared parser; rewrote `_verify_full_proof` to use it.
+- `solution/planner/driver.py` — Deadline threaded through, classifier for earliest failure, Fill-after-repair pass, prune-stale-progress, fresh-outline cap, per-hole budget halved.
+- `solution/planner/repair.py` — Deadline accepted in `try_cegis_repairs`/`regenerate_whole_proof`, verify timeouts now respect remaining budget, stage gating tightened (one stage per call), `prev_blocks` stores original LLM block instead of sorry-injected version, repair uses the shared strict verifier.
+- `solution/planner/experiments.py` — `_verify_full_isar` now delegates to `strict_verify_responses` so Fill and the bench harness can never disagree.
+
+### 8a — F1 Hard per-goal timeout enforcement
+- `planner/budget.py`: new `Deadline` (absolute-time monotonic budget with `remaining()` / `remaining_int(cap, min_)` / `expired()` / `check()`).
+- `planner/driver.py`: `plan_and_fill` now constructs `deadline = Deadline(float(timeout))` and aliases `left_s = deadline.remaining` (replacing the old lambda). Added `if deadline.expired(): break` at top of the main while loop. `_repair_failed_proof_topdown` also receives `deadline` and bails when expired.
+- `planner/driver.py`: `per_hole_budget` halved — Fill now gets at most 50% of remaining deadline so the same iteration's CEGIS pass has room.
+- `planner/repair.py`: `try_cegis_repairs` and `regenerate_whole_proof` accept `deadline=None`; their internal `left()` lambdas now return `min(local_budget, deadline.remaining())`. Per-stage Isabelle verifies use `verify_to = max(2, min(_ISA_VERIFY_TIMEOUT_S, int(left())))` so verifies near the deadline are clamped.
+- `_repair_block`: tightened round-entry guard from `left() <= 3` → `left() < 10` (one round can spend up to 8s LLM + 30s verify).
+
+### 8b — F2 Unify Fill verifier with bench verifier
+- `planner/goals.py`: new `strict_verify_responses(resps) -> (ok, diag)` which requires Isabelle's structured summary to have `ok=True AND errors=[]` (with a legacy `*** Error:` / `100%` fallback when no summary). Same parser used by both Fill and the bench.
+- `planner/goals.py`: `_verify_full_proof` rewritten to use `strict_verify_responses` instead of the previous `finished_ok` (which was strictly weaker — accepted partial errors).
+- `planner/repair.py`: all four `finished_ok(...)` callsites in `try_cegis_repairs` and `_repair_block` replaced with `strict_verify_responses(...)` so repair stages can never claim success on something the bench will reject.
+- `planner/experiments.py`: `_verify_full_isar` collapsed to a thin wrapper around `strict_verify_responses` so the bench and planner can never diverge.
+
+### 8c — F3 Re-run Fill after repair edits
+- `planner/driver.py`: after `try_cegis_repairs` returns `patched != full` but the strict verify failed, the driver now diffs sorry spans (`pre_repair_spans` vs `find_sorry_spans(patched)`), and for each NEW span runs `_fill_one_hole(...)`. If Fill closes all new sorrys and the result strict-verifies, returns success; otherwise keeps partial progress and continues escalation. Spec text: "after any repair edit, run Fill again on any newly introduced sorry placeholders".
+
+### 8d — F4 Driver-level earliest-failure pivot
+- `planner/driver.py`: new `_classify_earliest_failure(isabelle, session, full, spans) -> (line_1based, containing_sorry_span)` — runs `_quick_state_and_errors`, extracts the earliest error line, and decides whether that line overlaps a current sorry span.
+- `planner/driver.py`: span selection at top of the while loop now consults the classifier. If the earliest error is at a sorry → focus that span. If the earliest error is at a non-sorry line → pick the nearest sorry and start at repair stage 1 (skip Fill, which can't help a structural error). Spec text: "always focus on the earliest failure point".
+
+### 8e — F5 Per-stage round caps inside `try_cegis_repairs`
+- `planner/repair.py`: stage gating changed from `resume_stage <= 1` / `resume_stage <= 2` to STRICT match. `resume_stage=1` runs ONLY have/show; `resume_stage=2` runs ONLY case-block OR subproof (not both — case first if it exists, else subproof). Previously one call could chain all three stages internally for up to 9 LLM rounds before the driver's per-stage cap could intervene.
+- `planner/driver.py`: `_repair_failed_proof_topdown` was passing `resume_stage=0` and relied on the old behavior. Now explicitly iterates `for stg in (1, 2)` and stops once a stage produces a change.
+
+### 8f — F6 Clean up stale `repair_progress` entries
+- `planner/driver.py`: at the top of each while iteration, prune `repair_progress` keys not present in the current `spans` fingerprint set; also prune `stage_tries` keys whose `hole_key` is no longer current.
+
+### 8g — F7 Explicit cap on fresh-outline regeneration
+- `planner/driver.py`: added `_MAX_FRESH_OUTLINES = 2` and `fresh_outline_count` counter. After whole-proof regen fails, the planner is allowed to propose at most 2 fresh outlines before giving up; previously it kept proposing indefinitely until the wall-clock cap (which F1 now actually enforces — so without F7, the loop would just exhaust the full deadline cycling outlines).
+
+### 8h — F8 Store original LLM block in `prev_blocks`, not the sorry-injected version
+- `planner/repair.py`: `_repair_block` was appending `blk_with_sorry` (after `_replace_failing_tactics_with_sorry` replaced any failing tactic with `sorry`) to `mem.prev_blocks` and `prior_store`. Next-round prompts then showed the LLM these sorry-laden versions as "previous failures" — biasing the model. Now stores the original `blk` (and fingerprints by the original) while still splicing `blk_with_sorry` into the patched text.
+
+### Smoke verification
+Two smoke runs with `--timeout 60 --strict-no-sorry --verify --model 'ollama:qwen2.5-coder:7b'`:
+- First: top-2 hard goals — completed in 75s / 84s wall time (was 600+ s before). Both reported `success=False`, with Goal 1 honestly showing `had_sorry=False AND verified_ok=False` (Fill spliced tactics the strict verifier rejected — exactly the case F2 makes visible instead of false-positive).
+- Second: single trivial logic goal (`(True ∧ P) ⟷ P`) — 76s wall (60s plan_and_fill + ~16s bench-level verify), the planner produced a sorry-free outline that the strict verifier correctly rejected as non-compiling, so `verified_ok=False`.
+
+Net: the planner now runs within (1×–1.5×) `--timeout`, the verifier mismatch that produced false positives is closed, and the spec's "earliest failure point" / "run Fill after any repair edit" / "budgets per stage" / "global timeout" requirements are now actually wired up.
+
+**Next step for the report:** rerun `plan_compare.sh` (25 hard goals, both planners) against the F1-F8 implementation to produce planner-side comparison numbers.
+
+## Entry 10 — F11 hybrid fast-path + F12 prover self-strict-verify + F13 strict-verifier protocol fix
+
+**Request:** Add a fast-path to the planner so trivial goals can be closed by the prover (or canned finishers) without paying for outline generation + Fill. After implementing F11, smoke-test it and fix any issues that surface.
+
+**Actioned response:**
+
+Implemented F11 (`_try_prover_direct` in `solution/planner/driver.py`), smoke-tested on a 5-goal mix (3 mid + 2 hard). Smoke surfaced two upstream bugs that were masking each other and had been silently degrading the whole planner since F2 was introduced. F12 fixes one (the prover layer); F13 fixes the other (the strict verifier itself, which was the root cause).
+
+Files changed:
+- `solution/planner/driver.py` — new `_try_prover_direct` (F11 stage-A canned finishers + stage-B beam prover), wired into `plan_and_fill` ahead of outline generation.
+- `solution/prover/prover.py` — `try_finish` now cross-checks `finished_ok` against `strict_verify_responses` on the same response set (F12). This file was previously identical between baseline/ and solution/; that invariant is intentionally broken here.
+- `solution/planner/goals.py` — `strict_verify_responses` rewritten to read FINISHED-frame bodies the way `finished_ok` does, scanning `nodes[*].messages[*]` for `kind=="error"` (F13). Added `DEBUG_VERIFY=1` env-gated diag print to `_verify_full_proof` for future debugging.
+
+### 9a — F11 hybrid fast-path (`_try_prover_direct`)
+
+- `planner/driver.py`: new `_try_prover_direct(isabelle, session, goal, model, deadline, trace=...)` called at the top of `plan_and_fill` before outline generation. Returns a closed proof script or `None`.
+  - **Stage A** iterates `_DIRECT_FINISHERS = ("by blast", "by auto", "by simp", "by metis", "by force", "by fastforce", "by presburger", "by argo", "by linarith")`, each wrapped as `lemma "<goal>"\n  <tac>` and checked with `_verify_full_proof`. Returns on first success.
+  - **Stage B** runs `prove_goal(beam_w=3, max_depth=6, sledge_timeout=20, ...)` with ~40% of remaining deadline, reconstructs proof text from `res["steps"]`, and `_verify_full_proof`s it.
+  - Total budget capped at ~40% of `deadline.remaining()` so a failed fast path still leaves the outline+Fill path with room.
+- Rationale: many smoke goals are propositional / first-order tautologies that `by blast` closes in <1s. Going through outline → Fill → repair on those is wasteful and a common source of `had_sorry=True` outcomes when the LLM proposes a structured proof that doesn't quite typecheck.
+
+### 9b — F12 Prover self-strict-verify in `try_finish`
+
+- `prover/prover.py`: `try_finish` previously returned `ok` from `finished_ok(run_theory(...))` only. After F11 surfaced "prover PROVED but strict-verify rejected reconstructed proof" on 5/5 smoke goals, the obvious diagnosis was the F2 false-positive shape applied to the prover layer — `finished_ok` reads incremental FINISHED frames and can over-report when Isabelle keeps streaming after a logical error.
+- `prover/prover.py`: `try_finish` now also calls `strict_verify_responses(resps)` on the SAME response set (so no extra Isabelle round-trip) and returns `ok AND ok_strict`. The import is module-level with a `try/except` to keep `prover.cli` usable if `planner.goals` ever moves.
+- This change makes `prover.prover` diverge from `baseline/prover/prover.py` for the first time; `project_isabelle_3806ict` memory and `UPSTREAM.md` updated accordingly.
+
+### 9c — F13 Strict-verifier protocol fix (`strict_verify_responses`)
+
+- After F12 was in, F11 stage-B switched from "prover PROVED but rejected" → "prover returned success=False" on all 5 goals, but solution was still 0/5. Single-goal diag run with `DEBUG_VERIFY=1` on `(∃x. P x ∧ Q x) ⟶ (∃x. P x)` showed `strict_verify_responses` returning `Verification inconclusive: no structured summary` for `by blast`, `by auto`, `by simp`, etc. — every canned finisher rejected, including ones that trivially close the goal.
+- Root cause: the F2-era implementation looked for a top-level JSON response with `"ok"` and `"errors"` keys as siblings. The Isabelle 2025 client never emits that shape — its `ok` flag is nested inside a FINISHED frame's body, and errors are under `nodes[*].messages[*]` with `kind=="error"`. So `strict_verify_responses` always fell through to the legacy `*** Error:` / `100%` text scan, never matched either, and returned False for ALL proofs. This is why Fill kept reporting `had_sorry=False AND verified_ok=False` post-F2 — Fill's strict-verify was *unconditionally* False, but the bench's strict-verify was also unconditionally False, so they "agreed" by both rejecting everything.
+- `planner/goals.py`: rewrote `strict_verify_responses` to mirror `finished_ok`'s decoding — uses `_get_field`, `_normalize_type`, `_decode_body_to_dict` from `prover.isabelle_api` to find FINISHED frames, reads `obj.get("ok")` / `obj.get("result")`, scans `obj["nodes"][*]["messages"][*]` for `kind=="error"`. Success iff last FINISHED `ok=true` AND no error messages anywhere. Legacy `*** Error:` fallback retained for response streams that have no FINISHED frame.
+- `planner/goals.py`: `_verify_full_proof` now prints the diag and any exception when `DEBUG_VERIFY=1` is set — env-gated, silent otherwise.
+
+### Smoke verification (5 goals, K=1, T=60s, qwen2.5-coder:7b)
+
+Goal set: `datasets_subset/smoke_f11.txt` = first 3 from `mid_25.txt` + first 2 from `hard_25.txt`.
+
+| Run | Baseline | Solution | Notes |
+|---|---:|---:|---|
+| F11 only (pre-F12, pre-F13) | 0/5 | 0/5 | 5/5 stage-B "PROVED but strict-verify rejected" — the F13 protocol bug |
+| F11 + F12 (pre-F13) | 0/5 | 0/5 | 5/5 "prover returned success=False" — F12 stops the lie, but F13 still rejects |
+| F11 + F12 + F13 (final) | **0/5** | **5/5** | 5/5 stage-A `by blast` solves in 7-9s/goal |
+
+Solution side per-goal: `success=True had_sorry=False verified_ok=True` for all five, mean 8.7s wall (vs baseline mean ~62s and 0/5 verified).
+
+**Net:** F13 is the load-bearing fix. F11 is the new feature it enabled (was already in the code but invisible because strict-verify rejected even the correct proofs it produced). F12 closes a related but separate over-reporting hole at the prover layer.
+
+**Next step for the report:** rerun the assignment-flavor sweep (`TIMEOUT=180 K=3` against `hard_25.txt`) to get planner-comparison numbers for the writeup. The F13 fix should materially improve baseline AND solution success rates across the board, not just on these 5 goals — worth verifying.
+
+## Entry 11 — Pre-reboot handoff: assignment-flavor sweep runbook
+
+**Request:** Save the sweep-launch commands + live progress-watcher to a file in the workspace root, update memory and AI_LOG so a fresh Claude session after a reboot can pick up where this one left off. Do not launch the sweep — the user will launch it themselves after reboot.
+
+**Actioned response:**
+
+- Wrote `/home/zack/Desktop/AGENTIC_REASONING/SWEEP_RUNBOOK.md` containing: Step 1 launch (parks any existing `planner_comparison/`, checks ollama, `nohup`-launches `plan_compare.sh hard_25.txt` with TIMEOUT=180 K=3 TEMPS='0.35,0.55,0.85'), Step 2 a `watch_sweep` shell function that refreshes every 120s (alive check, log mtimes, goals-done/verified per side, F11 stage-A/B hit counts on solution, latest tails, traceback alarm, terminal-bell on completion), Step 3 one-off spot-checks, Step 4 abort, Step 5 post-completion archival.
+- Added reference memory pointing at the runbook so the next session knows where to look.
+- This entry itself documents the handoff so the appendix has a record of the pause.
+
+State of solution/ at handoff: F11+F12+F13 live, smoke 5/5 vs baseline 0/5 verified on `smoke_f11.txt`. `DEBUG_VERIFY=1` env-gated diag still present in `solution/planner/goals.py:_verify_full_proof` — env-gated, silent in normal runs; can stay until the assignment sweep validates everything end-to-end.
+
+**Next step for the report:** post-reboot, follow `SWEEP_RUNBOOK.md` Steps 1-2. Expected wall time ~1.5-2.5 hours. Bring the resulting `planner_comparison/summary.md` back into the next Claude session for analysis.

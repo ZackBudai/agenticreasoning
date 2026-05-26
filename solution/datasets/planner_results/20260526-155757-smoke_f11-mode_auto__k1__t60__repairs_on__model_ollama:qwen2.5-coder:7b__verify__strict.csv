@@ -1,0 +1,6 @@
+goal,success,elapsed_s,mode,model,outline_chars,fills,failed_holes,had_sorry,verified_ok
+¬ (∀x∈A. P x) ⟷ (∃x∈A. ¬ P x),False,64.8390,auto,ollama:qwen2.5-coder:7b,449,0,0,True,True
+(∃x. P x ∧ Q x) ⟶ (∃x. P x),False,66.5870,auto,ollama:qwen2.5-coder:7b,185,1,0,True,True
+(∀x. P x ⟶ Q) ⟶ ((∃x. P x) ⟶ Q),False,66.2817,auto,ollama:qwen2.5-coder:7b,210,0,1,False,False
+(∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x),False,65.6374,auto,ollama:qwen2.5-coder:7b,222,0,1,False,False
+(∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x)),False,66.6368,auto,ollama:qwen2.5-coder:7b,194,0,0,True,True

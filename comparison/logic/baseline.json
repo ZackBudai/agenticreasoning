@@ -1,0 +1,32 @@
+{
+  "dataset": "logic",
+  "n_goals": 5,
+  "proved": 5,
+  "results": [
+    {
+      "goal": "(True \u2227 P) \u27f7 P",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "(P \u2227 True) \u27f7 P",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "(P \u2228 False) \u27f7 P",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "(\u00ac \u00ac P) \u27f7 P",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "(P \u27f6 Q) \u27f7 (\u00ac P \u2228 Q)",
+      "ok": true,
+      "proof": "by simp"
+    }
+  ]
+}

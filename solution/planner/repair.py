@@ -11,6 +11,8 @@ import requests
 from typing import Callable
 from planner.repair_inputs import _find_first_hole, _hole_line_bounds, _APPLY_OR_BY, _snippet_window, _clamp_line_index, _quick_state_and_errors, _extract_error_lines, _run_theory_with_timeout, _print_state_before_hole, _nearest_header, _recent_steps, _normalize_error_texts, _facts_from_state, get_counterexample_hints_for_repair, _earliest_failure_anchor
 from planner.prompts import _LOCAL_SYSTEM, _LOCAL_USER, _BLOCK_SYSTEM, _BLOCK_USER
+from planner.budget import Deadline
+from planner.goals import strict_verify_responses
 from prover.config import MODEL as DEFAULT_MODEL, OLLAMA_HOST, TIMEOUT_S as OLLAMA_TIMEOUT_S, OLLAMA_NUM_PREDICT, TEMP as OLLAMA_TEMP, TOP_P as OLLAMA_TOP_P
 from prover.isabelle_api import build_theory, run_theory, last_print_state_block, finished_ok
 
@@ -591,12 +593,19 @@ def _replace_failing_tactics_with_sorry(block_text: str, *, full_text_lines: Lis
     
     return "\n".join(block_lines)
 
-def try_cegis_repairs(*, full_text: str, hole_span: Tuple[int, int], goal_text: str, model: Optional[str], 
-                     isabelle, session: str, repair_budget_s: float = 15.0, max_ops_to_try: int = 3, 
-                     beam_k: int = 1, allow_whole_fallback: bool = False, trace: bool = False, 
-                     resume_stage: int = 0) -> Tuple[str, bool, str]:
+def try_cegis_repairs(*, full_text: str, hole_span: Tuple[int, int], goal_text: str, model: Optional[str],
+                     isabelle, session: str, repair_budget_s: float = 15.0, max_ops_to_try: int = 3,
+                     beam_k: int = 1, allow_whole_fallback: bool = False, trace: bool = False,
+                     resume_stage: int = 0, deadline: Optional[Deadline] = None) -> Tuple[str, bool, str]:
     t0 = time.monotonic()
-    left = lambda: max(0.0, repair_budget_s - (time.monotonic() - t0))
+    # Honor both the local repair budget AND the global per-goal deadline (whichever is tighter).
+    if deadline is not None:
+        left = lambda: min(
+            max(0.0, repair_budget_s - (time.monotonic() - t0)),
+            deadline.remaining(),
+        )
+    else:
+        left = lambda: max(0.0, repair_budget_s - (time.monotonic() - t0))
     current_text = full_text
     state0 = _print_state_before_hole(isabelle, session, current_text, hole_span, trace=trace)
     _log("repair", "State block", state0, trace=trace)
@@ -606,58 +615,63 @@ def try_cegis_repairs(*, full_text: str, hole_span: Tuple[int, int], goal_text: 
 
     prior_store: Dict[str, List[str]] = {}
 
-    # Stage 1: have/show/obtain micro-block
+    # F5: Run only the stage matching `resume_stage`. The driver escalates between
+    # calls via STAGE1_CAP/STAGE2_CAP so each call should consume budget for one
+    # stage, not all three in succession (was up to 9 LLM rounds per invocation).
     hole_line, _, lines = _hole_line_bounds(current_text, hole_span)
     anchor_line, anchor_reason = _earliest_failure_anchor(isabelle, session, current_text, default_line_0=hole_line)
     focus_line = _clamp_line_index(lines, anchor_line)
     if trace and anchor_line != hole_line:
         print(f"[repair] Retargeting from hole line {hole_line + 1} to earliest-failure line {anchor_line + 1} ({anchor_reason})")
-    
-    hs_s, hs_e = _enclosing_have_show_block(lines, focus_line)
-    if resume_stage <= 1 and hs_s >= 0 and left() > 5.0:
-        if trace:
-            print("[repair] Trying have/show block repair…")
-        current_text = _repair_block(current_text, lines, hs_s, hs_e, goal_text, state0, 
-                                     isabelle, session, model, left, trace, "have-show", 
-                                     stage=1, prior_store=prior_store)
-        if current_text != full_text:
-            thy = build_theory(current_text.splitlines(), add_print_state=False, end_with=None)
-            ok, _ = finished_ok(_run_theory_with_timeout(isabelle, session, thy, timeout_s=_ISA_VERIFY_TIMEOUT_S))
-            # Only claim success if theory compiles AND the target sorry is gone
-            if ok and "sorry" not in current_text[max(0, hole_span[0] - 20):hole_span[1] + 20]:
-                return current_text, True, "stage=1 block:have-show"
-            return current_text, False, "stage=1 partial-progress"
-        lines = current_text.splitlines()
-        state0 = _print_state_before_hole(isabelle, session, current_text, hole_span, trace=trace)
 
-    # Stage 2a: Case-block
-    cs, ce = _enclosing_case_block(lines, focus_line)
-    if resume_stage <= 2 and cs >= 0 and left() > 5.0:
-        if trace:
-            print("[repair] Trying case-block repair…")
-        current_text = _repair_block(current_text, lines, cs, ce, goal_text, state0, isabelle, session,
-                                     model, left, trace, "case", stage=2, prior_store=prior_store)
-        if current_text != full_text:
-            thy = build_theory(current_text.splitlines(), add_print_state=False, end_with=None)
-            ok, _ = finished_ok(_run_theory_with_timeout(isabelle, session, thy, timeout_s=_ISA_VERIFY_TIMEOUT_S))
-            if ok and "sorry" not in current_text[max(0, hole_span[0] - 20):hole_span[1] + 20]:
-                return current_text, True, "stage=2 block:case"
-            return current_text, False, "stage=2 partial-progress"
+    if resume_stage <= 1:
+        # Stage 1: have/show/obtain micro-block
+        hs_s, hs_e = _enclosing_have_show_block(lines, focus_line)
+        if hs_s >= 0 and left() > 5.0:
+            if trace:
+                print("[repair] Stage 1: have/show block repair…")
+            current_text = _repair_block(current_text, lines, hs_s, hs_e, goal_text, state0,
+                                         isabelle, session, model, left, trace, "have-show",
+                                         stage=1, prior_store=prior_store)
+            if current_text != full_text:
+                thy = build_theory(current_text.splitlines(), add_print_state=False, end_with=None)
+                verify_to = max(2, min(int(_ISA_VERIFY_TIMEOUT_S), int(left())))
+                ok, _ = strict_verify_responses(_run_theory_with_timeout(isabelle, session, thy, timeout_s=verify_to))
+                if ok and "sorry" not in current_text[max(0, hole_span[0] - 20):hole_span[1] + 20]:
+                    return current_text, True, "stage=1 block:have-show"
+                return current_text, False, "stage=1 partial-progress"
 
-    # Stage 2b: Subproof
-    ps, pe = _enclosing_subproof(lines, focus_line)
-    if resume_stage <= 2 and ps >= 0 and left() > 3.0:
-        if trace:
-            print("[repair] Trying subproof repair…")
-        current_text = _repair_block(current_text, lines, ps, pe, goal_text, state0, isabelle, session,
-                                     model, left, trace, "subproof", stage=2, prior_store=prior_store)
-        if current_text != full_text:
-            thy = build_theory(current_text.splitlines(), add_print_state=False, end_with=None)
-            ok, _ = finished_ok(_run_theory_with_timeout(isabelle, session, thy, timeout_s=_ISA_VERIFY_TIMEOUT_S))
-            if ok and "sorry" not in current_text[max(0, hole_span[0] - 20):hole_span[1] + 20]:
-                return current_text, True, "stage=2 block:subproof"
-            return current_text, False, "stage=2 partial-progress"
-    
+    elif resume_stage == 2:
+        # Stage 2: pick ONE of {case-block, subproof}. Case-block first if it exists;
+        # otherwise fall through to subproof. Don't run both in a single call.
+        cs, ce = _enclosing_case_block(lines, focus_line)
+        if cs >= 0 and left() > 5.0:
+            if trace:
+                print("[repair] Stage 2: case-block repair…")
+            current_text = _repair_block(current_text, lines, cs, ce, goal_text, state0, isabelle, session,
+                                         model, left, trace, "case", stage=2, prior_store=prior_store)
+            if current_text != full_text:
+                thy = build_theory(current_text.splitlines(), add_print_state=False, end_with=None)
+                verify_to = max(2, min(int(_ISA_VERIFY_TIMEOUT_S), int(left())))
+                ok, _ = strict_verify_responses(_run_theory_with_timeout(isabelle, session, thy, timeout_s=verify_to))
+                if ok and "sorry" not in current_text[max(0, hole_span[0] - 20):hole_span[1] + 20]:
+                    return current_text, True, "stage=2 block:case"
+                return current_text, False, "stage=2 partial-progress"
+        else:
+            ps, pe = _enclosing_subproof(lines, focus_line)
+            if ps >= 0 and left() > 3.0:
+                if trace:
+                    print("[repair] Stage 2: subproof repair…")
+                current_text = _repair_block(current_text, lines, ps, pe, goal_text, state0, isabelle, session,
+                                             model, left, trace, "subproof", stage=2, prior_store=prior_store)
+                if current_text != full_text:
+                    thy = build_theory(current_text.splitlines(), add_print_state=False, end_with=None)
+                    verify_to = max(2, min(int(_ISA_VERIFY_TIMEOUT_S), int(left())))
+                    ok, _ = strict_verify_responses(_run_theory_with_timeout(isabelle, session, thy, timeout_s=verify_to))
+                    if ok and "sorry" not in current_text[max(0, hole_span[0] - 20):hole_span[1] + 20]:
+                        return current_text, True, "stage=2 block:subproof"
+                    return current_text, False, "stage=2 partial-progress"
+
     if current_text != full_text:
         return current_text, False, f"stage={resume_stage} partial-progress"
     return full_text, False, f"stage={resume_stage} cegis-nohelp"
@@ -683,7 +697,8 @@ def _repair_block(current_text: str, lines: List[str], start: int, end: int, goa
 
     # Build proposals in a few rounds; track failures and surface them to the LLM
     for rr in range(rounds):
-        if left() <= 3.0:
+        # Need at least ~10s for one LLM call + Isabelle verify; otherwise honor the deadline and bail.
+        if left() < 10.0:
             break
         mem.rounds = rr + 1
         why = f"Previous {block_type}-block attempt did not solve the goal; try a different strategy."
@@ -740,22 +755,23 @@ def _repair_block(current_text: str, lines: List[str], start: int, end: int, goa
         if blk.strip() == block.strip():
             continue
         
-        blk_with_sorry = _replace_failing_tactics_with_sorry(blk, full_text_lines=lines, start_line=start + 1, 
-                                                             end_line=end + 1, isabelle=isabelle, 
+        blk_with_sorry = _replace_failing_tactics_with_sorry(blk, full_text_lines=lines, start_line=start + 1,
+                                                             end_line=end + 1, isabelle=isabelle,
                                                              session=session, trace=trace)
         _log("repair", f"{block_type}-block (output)", blk_with_sorry, trace=trace)
-        
-        # Record this failed candidate into local and shared stores (so next round tries differ)
-        fp = _fingerprint_block(blk_with_sorry)
+
+        # F8: Record the ORIGINAL LLM proposal in prev_blocks (not the sorry-injected version)
+        # so the next round's prompt shows the LLM what it actually tried, not a derived form.
+        # Fingerprint also uses the original to dedup on LLM intent.
+        fp = _fingerprint_block(blk)
         if fp and fp not in mem.prev_fps:
             mem.prev_fps.add(fp)
-            mem.prev_blocks.insert(0, blk_with_sorry)
+            mem.prev_blocks.insert(0, blk)
             mem.prev_blocks = mem.prev_blocks[:_MAX_PREV_BLOCKS]
             if isinstance(prior_store, dict):
                 lst = prior_store.setdefault(block_type, [])
-                # De-dup in shared store too
                 if fp not in [_fingerprint_block(x) for x in lst]:
-                    lst.insert(0, blk_with_sorry)
+                    lst.insert(0, blk)
                     del lst[_MAX_PREV_BLOCKS:]        
         
         # FIX: Properly replace the block by splitting into lines
@@ -764,8 +780,10 @@ def _repair_block(current_text: str, lines: List[str], start: int, end: int, goa
         patched = "\n".join(patched_lines)
         
         thy = build_theory(patched.splitlines(), add_print_state=False, end_with=None)
-        ok, _ = finished_ok(_run_theory_with_timeout(isabelle, session, thy, timeout_s=_ISA_VERIFY_TIMEOUT_S))
-        
+        # Cap verify by what's left of the budget so we don't blow past the deadline mid-verify.
+        verify_to = max(2, min(int(_ISA_VERIFY_TIMEOUT_S), int(left())))
+        ok, _ = strict_verify_responses(_run_theory_with_timeout(isabelle, session, thy, timeout_s=verify_to))
+
         if ok:
             return patched
         
@@ -782,7 +800,8 @@ def _repair_block(current_text: str, lines: List[str], start: int, end: int, goa
 # ---------- Public helper: whole-proof regeneration with prior-failure banlist ----------
 def regenerate_whole_proof(*, full_text: str, goal_text: str, model: Optional[str],
                            isabelle, session: str, budget_s: float = 20.0,
-                           trace: bool = False, prior_outline_text: Optional[str] = None
+                           trace: bool = False, prior_outline_text: Optional[str] = None,
+                           deadline: Optional[Deadline] = None,
                           ) -> Tuple[str, bool, str]:
     """
     Re-generate the last proof..qed block (or from the lemma head to EOF if no qed yet),
@@ -802,9 +821,15 @@ def regenerate_whole_proof(*, full_text: str, goal_text: str, model: Optional[st
             return full_text, False, "whole:region-not-found"
         ws, we = start, len(lines)
 
-    # Simple local timer for the block repair
+    # Simple local timer for the block repair, capped by global deadline if provided.
     t0 = time.monotonic()
-    left = lambda: max(0.0, budget_s - (time.monotonic() - t0))
+    if deadline is not None:
+        left = lambda: min(
+            max(0.0, budget_s - (time.monotonic() - t0)),
+            deadline.remaining(),
+        )
+    else:
+        left = lambda: max(0.0, budget_s - (time.monotonic() - t0))
     # Use empty/quick state — the block prompt already carries enough context
     state0 = ""
     # Seed prior failed blocks with the previous outline (so the first round won't repeat it)

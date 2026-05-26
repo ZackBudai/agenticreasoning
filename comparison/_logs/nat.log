@@ -1,0 +1,202 @@
+Loading 9 goals from solution/datasets/nat.txt...
+  9 goals loaded.
+
+Starting Isabelle server...
+  server "comparison" = 127.0.0.1:36819 (password "1988a7f5-ae25-48c3-85bc-f021f6d06dfd")
+/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/compare.py:51: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+  d = body.dict() if hasattr(body, "dict") else {}
+  session_id: 75fd4ab0-885d-479a-9bfb-2a3cace69ac0
+
+Running BASELINE (baseline/ prover, model=ollama:qwen2.5-coder:32b, timeout=30s)...
+
+▶ Goal: 0 + n = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by arith, llm:by presburger]
+  baseline ✗ (53.8s): 0 + n = n
+
+▶ Goal: n + 0 = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by arith, llm:by presburger, llm:by (clarsimp), llm:by meson]
+  baseline ✗ (65.5s): n + 0 = n
+
+▶ Goal: n + Suc m = Suc (n + m)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by blast, llm:by arith, llm:by presburger, llm:by linarith]
+  baseline ✗ (64.8s): n + Suc m = Suc (n + m)
+
+▶ Goal: Suc n ≠ 0
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson, llm:by (rule Suc_neq_0)]
+  baseline ✗ (68.6s): Suc n ≠ 0
+
+▶ Goal: n ≤ n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by arith, llm:by presburger]
+  baseline ✗ (59.7s): n ≤ n
+
+▶ Goal: min n n = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by (metis min_absorb1), llm:by (meson min_absorb1), llm:by (clarsimp), llm:by (rule min_absorb1)]
+  baseline ✗ (81.3s): min n n = n
+
+▶ Goal: max n n = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by (meson le_refl max.boundedE), llm:by (rule antisym), llm:by (intro max.boundedI), llm:by (clarsimp simp: le_max_iff_disj)]
+  baseline ✗ (95.3s): max n n = n
+
+▶ Goal: n + m = m + n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by arith, llm:by presburger, llm:by meson]
+  baseline ✗ (61.4s): n + m = m + n
+
+▶ Goal: n + (m + k) = (n + m) + k
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by arith, llm:by presburger]
+  baseline ✗ (58.8s): n + (m + k) = (n + m) + k
+  Baseline: 0/9 proved → comparison/nat/baseline_results.thy
+
+Running SOLUTION (model=ollama:qwen2.5-coder:32b, timeout=120s)...
+
+▶ Goal: 0 + n = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by blast, llm:by arith, llm:by presburger, llm:by linarith]
+  finish × [llm] by simp  (2396ms)
+  finish × [llm] by auto  (1975ms)
+  finish × [llm] by blast  (2102ms)
+  finish × [llm] by arith  (2102ms)
+  finish × [llm] by presburger  (2204ms)
+  finish × [llm] by linarith  (2000ms)
+Proposals (origin): [llm:apply linarith, llm:apply arith, llm:apply auto, llm:apply simp, llm:apply clarify, llm:apply clarsimp]
+  step  × [llm] apply linarith (2267ms)
+  step  × [llm] apply arith (2104ms)
+  step  × [llm] apply auto (2101ms)
+  solution ✗ (121.1s): 0 + n = n
+
+▶ Goal: n + 0 = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by blast, llm:by arith, llm:by presburger]
+  finish × [llm] by simp  (2270ms)
+  finish × [llm] by clarsimp  (2204ms)
+  finish × [llm] by auto  (2013ms)
+  finish × [llm] by blast  (2222ms)
+  finish × [llm] by arith  (2017ms)
+  finish × [llm] by presburger  (2061ms)
+Proposals (origin): [llm:apply arith, llm:apply (auto simp add: algebra_simps), llm:apply simp, llm:apply blast, llm:apply fastforce, llm:apply (simp add: nat.add_0)]
+  solution ✗ (133.9s): n + 0 = n
+
+▶ Goal: n + Suc m = Suc (n + m)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by blast, llm:by arith, llm:by presburger, llm:by linarith]
+  finish ✓ [llm] by simp  (2368ms)
+✔ PROVED
+  solution ✓ (63.9s): n + Suc m = Suc (n + m)
+
+▶ Goal: Suc n ≠ 0
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (meson nat.distinct(1)), llm:by (rule notI, erule_tac P="Suc n = 0" in contrapos_nn)]
+  finish ✓ [llm] by simp  (2379ms)
+✔ PROVED
+  solution ✓ (92.3s): Suc n ≠ 0
+
+▶ Goal: n ≤ n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger, llm:by metis]
+  finish × [llm] by simp  (2268ms)
+  finish × [llm] by auto  (2104ms)
+  finish × [llm] by fastforce  (2107ms)
+  finish × [llm] by blast  (2206ms)
+  finish × [llm] by presburger  (2001ms)
+  finish × [llm] by metis  (2105ms)
+Proposals (origin): [llm:apply arith, llm:apply auto, llm:apply simp, llm:apply blast, llm:apply fastforce, llm:apply (clarsimp)]
+  solution ✗ (125.3s): n ≤ n
+
+▶ Goal: min n n = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by presburger, llm:by linarith]
+  finish × [llm] by simp  (2266ms)
+  finish × [llm] by clarsimp  (2210ms)
+  finish × [llm] by auto  (2002ms)
+  finish × [llm] by fastforce  (2208ms)
+  finish × [llm] by presburger  (2013ms)
+  finish × [llm] by linarith  (2093ms)
+Proposals (origin): [llm:apply simp, llm:apply auto, llm:apply arith, llm:apply (clarsimp), llm:apply (rule antisym), llm:apply (rule min_le_iff_disj1[THEN iffD2])]
+  solution ✗ (160.5s): min n n = n
+
+▶ Goal: max n n = n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by arith, llm:by presburger, llm:by refl]
+  finish × [llm] by simp  (2265ms)
+  finish × [llm] by auto  (2107ms)
+  finish × [llm] by fastforce  (2105ms)
+  finish × [llm] by arith  (2106ms)
+  finish × [llm] by presburger  (2104ms)
+  finish × [llm] by refl  (2209ms)
+Proposals (origin): [llm:apply simp, llm:apply auto, llm:apply arith, llm:apply clarify, llm:apply clarsimp, llm:apply fastforce]
+  solution ✗ (121.1s): max n n = n
+
+▶ Goal: n + m = m + n
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by arith, llm:by presburger]
+  finish × [llm] by simp  (2264ms)
+  finish × [llm] by auto  (2106ms)
+  finish × [llm] by fastforce  (2105ms)
+  finish × [llm] by blast  (2216ms)
+  finish × [llm] by arith  (1995ms)
+  finish × [llm] by presburger  (2104ms)
+Proposals (origin): [llm:apply linarith, llm:apply arith, llm:apply auto, llm:apply simp, llm:apply clarify, llm:apply clarsimp]
+  step  × [llm] apply linarith (2366ms)
+  step  × [llm] apply arith (2004ms)
+  step  × [llm] apply auto (2105ms)
+  solution ✗ (121.5s): n + m = m + n
+
+▶ Goal: n + (m + k) = (n + m) + k
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by arith, llm:by presburger, llm:by meson]
+  finish × [llm] by simp  (2272ms)
+  finish × [llm] by auto  (2208ms)
+  finish × [llm] by fastforce  (2007ms)
+  finish × [llm] by arith  (2209ms)
+  finish × [llm] by presburger  (2127ms)
+  finish × [llm] by meson  (1982ms)
+Proposals (origin): [llm:apply linarith, llm:apply arith, llm:apply auto, llm:apply simp, llm:apply blast, llm:apply fastforce]
+  solution ✗ (133.3s): n + (m + k) = (n + m) + k
+  Solution: 2/9 proved → comparison/nat/solution_results.thy
+
+============================================================
+RESULTS SUMMARY (9 goals)
+============================================================
+Goal                                           Baseline  Solution
+-----------------------------------------------------------------
+  0 + n = n                                      failed    failed
+  n + 0 = n                                      failed    failed
+  n + Suc m = Suc (n + m)                        failed    PROVED
+  Suc n ≠ 0                                      failed    PROVED
+  n ≤ n                                          failed    failed
+  min n n = n                                    failed    failed
+  max n n = n                                    failed    failed
+  n + m = m + n                                  failed    failed
+  n + (m + k) = (n + m) + k                      failed    failed
+-----------------------------------------------------------------
+  TOTAL                                            0/9      2/9
+
+Theory files written to comparison/nat/
+  Load in Isabelle: isabelle jedit -d comparison/nat baseline_results.thy
+  Or build session: isabelle build -d comparison/nat Comparison

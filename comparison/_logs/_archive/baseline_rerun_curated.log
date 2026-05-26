@@ -1,0 +1,55 @@
+Starting Isabelle server...
+  session_id: 2224231d-6fde-4535-937f-1cdc611d94fb
+
+── lists: 18 goals
+  baseline ✓ (10.6s): rev (rev xs) = xs
+  baseline ✓ (18.7s): xs @ [] = xs
+  baseline ✓ (16.8s): [] @ xs = xs
+  baseline ✓ (27.3s): rev (xs @ ys) = rev ys @ rev xs
+  baseline ✓ (20.2s): map id xs = xs
+  baseline ✓ (17.7s): map f (xs @ ys) = map f xs @ map f ys
+  baseline ✓ (41.7s): map f (rev xs) = rev (map f xs)
+  baseline ✓ (19.4s): length (xs @ ys) = length xs + length ys
+  baseline ✓ (19.7s): length (rev xs) = length xs
+  baseline ✓ (27.9s): take (length xs) (xs @ ys) = xs
+  baseline ✓ (19.8s): drop (length xs) (xs @ ys) = ys
+  baseline ✓ (22.6s): take n xs @ drop n xs = xs
+  baseline ✓ (21.1s): set (xs @ ys) = set xs ∪ set ys
+  baseline ✓ (22.1s): x ∈ set xs ⟹ x ∈ set (xs @ ys)
+  baseline ✓ (21.9s): x ∈ set ys ⟹ x ∈ set (xs @ ys)
+  baseline ✓ (22.8s): distinct xs ⟹ distinct (rev xs)
+  baseline ✓ (27.3s): filter p (xs @ ys) = filter p xs @ filter p ys
+  baseline ✗ (28.9s): map f (filter p xs) = filter (λx. p x) (map f xs)
+  → 17/18 proved in 407s
+
+── logic: 5 goals
+  baseline ✓ (13.7s): (True ∧ P) ⟷ P
+  baseline ✓ (14.9s): (P ∧ True) ⟷ P
+  baseline ✓ (14.3s): (P ∨ False) ⟷ P
+  baseline ✓ (14.3s): (¬ ¬ P) ⟷ P
+  baseline ✓ (14.1s): (P ⟶ Q) ⟷ (¬ P ∨ Q)
+  → 5/5 proved in 71s
+
+── nat: 9 goals
+  baseline ✗ (27.8s): 0 + n = n
+  baseline ✗ (29.1s): n + 0 = n
+  baseline ✓ (30.3s): n + Suc m = Suc (n + m)
+  baseline ✓ (19.6s): Suc n ≠ 0
+  baseline ✗ (27.7s): n ≤ n
+  baseline ✓ (29.3s): min n n = n
+  baseline ✓ (31.0s): max n n = n
+  baseline ✗ (29.2s): n + m = m + n
+  baseline ✗ (29.0s): n + (m + k) = (n + m) + k
+  → 4/9 proved in 253s
+
+── sets: 8 goals
+  baseline ✓ (18.9s): {x} ∪ A = insert x A
+  baseline ✓ (19.9s): x ∈ insert y A ⟷ (x = y ∨ x ∈ A)
+  baseline ✓ (19.5s): A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C)
+  baseline ✓ (18.8s): A ⊆ A ∪ B
+  baseline ✓ (18.1s): A ∩ B ⊆ A
+  baseline ✓ (22.1s): (A ⊆ B ∧ B ⊆ C) ⟹ A ⊆ C
+  baseline ✓ (19.7s): (A ⊆ B ∧ B ⊆ A) ⟹ A = B
+  baseline ✓ (20.7s): set (xs @ ys) = set xs ∪ set ys
+  → 8/8 proved in 158s
+

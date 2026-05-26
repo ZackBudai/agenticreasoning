@@ -1,0 +1,158 @@
+server "planner" = 127.0.0.1:40397 (password "4f8ff868-bd48-458d-b8ca-aa9326a8bd9b")
+session_id: e45f32d1-a49b-4f33-857d-f14e99a42b2e | session: HOL
+
+=== Planner suite: smoke_f11 (5 goals) ===
+[mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict] (run 1/1) [1/5] ¬ (∀x∈A. P x) ⟷ (∃x∈A. ¬ P x)
+[planner] ▶ goal: ¬ (∀x∈A. P x) ⟷ (∃x∈A. ¬ P x)
+[planner]   mode=auto k=1 timeout=60s repairs=True
+
+▶ Goal: ¬ (∀x∈A. P x) ⟷ (∃x∈A. ¬ P x)
+Models: ollama:qwen2.5-coder:7b | Beam=3 | MaxDepth=6 | Timeout=23s
+Sledgehammer finishers: ['by blast', 'by simp', 'by auto', 'by fast', 'by fastforce']
+Finishers (origin): [sledge:by blast, sledge:by simp, sledge:by auto, sledge:by fast, sledge:by fastforce, llm:by presburger, llm:by meson]
+  finish × [sledge] by blast  (2256ms)
+  finish × [sledge] by simp  (2109ms)
+  finish × [sledge] by auto  (2095ms)
+  finish × [sledge] by fast  (2104ms)
+  finish × [sledge] by fastforce  (2106ms)
+  finish × [llm] by presburger  (2106ms)
+  finish × [llm] by meson  (2101ms)
+Proposals (origin): [llm:apply blast, llm:apply auto, llm:apply rule, llm:apply clarify, llm:apply clarsimp, llm:apply fastforce]
+[planner] F11 stage-B: prover returned success=False (keys=['goal', 'success', 'steps', 'depth', 'use_calls', 'elapsed_s', 'model'])
+[planner]   ❌ planner error: requests.exceptions.ReadTimeout: HTTPConnectionPool(host='127.0.0.1', port=11434): Read timed out. (read timeout=16)
+[mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict] (run 1/1) [2/5] (∃x. P x ∧ Q x) ⟶ (∃x. P x)
+[planner] ▶ goal: (∃x. P x ∧ Q x) ⟶ (∃x. P x)
+[planner]   mode=auto k=1 timeout=60s repairs=True
+
+▶ Goal: (∃x. P x ∧ Q x) ⟶ (∃x. P x)
+Models: ollama:qwen2.5-coder:7b | Beam=3 | MaxDepth=6 | Timeout=23s
+Sledgehammer finishers: ['by blast', 'by fast', 'by auto', 'by fastforce', 'by force']
+Finishers (origin): [sledge:by blast, sledge:by fast, sledge:by auto, sledge:by fastforce, sledge:by force, llm:by simp, llm:by clarsimp, llm:by arith, llm:by presburger, llm:by meson]
+  finish × [sledge] by blast  (1647ms)
+  finish × [sledge] by fast  (2111ms)
+  finish × [sledge] by auto  (2099ms)
+  finish × [sledge] by fastforce  (2103ms)
+  finish × [sledge] by force  (2101ms)
+  finish × [llm] by simp  (2111ms)
+  finish × [llm] by clarsimp  (2102ms)
+  finish × [llm] by arith  (2097ms)
+  finish × [llm] by presburger  (2103ms)
+  finish × [llm] by meson  (2106ms)
+[planner] F11 stage-B: prover returned success=False (keys=['goal', 'success', 'steps', 'depth', 'use_calls', 'elapsed_s', 'model'])
+[planner]   outline chars=194 fills=0 failed_holes=1
+Current proof outline:
+lemma "(∃x. P x ∧ Q x) ⟶ (∃x. P x)"
+proof -
+  assume h: "∃x. P x ∧ Q x"
+  obtain a where a_h: "P a ∧ Q a" using h by blast
+  have f1: "P a" using a_h by simp
+  show ?thesis using f1 by auto
+qed
+
+[planner]   verifying with Isabelle…
+session_id: 7cb1b807-3a91-4134-8f27-2a10a048f5ea | session: HOL
+[planner]   verify=fail
+[planner]   done in 65.11s | success=False had_sorry=False verified_ok=False
+[mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict] (run 1/1) [3/5] (∀x. P x ⟶ Q) ⟶ ((∃x. P x) ⟶ Q)
+[planner] ▶ goal: (∀x. P x ⟶ Q) ⟶ ((∃x. P x) ⟶ Q)
+[planner]   mode=auto k=1 timeout=60s repairs=True
+
+▶ Goal: (∀x. P x ⟶ Q) ⟶ ((∃x. P x) ⟶ Q)
+Models: ollama:qwen2.5-coder:7b | Beam=3 | MaxDepth=6 | Timeout=23s
+Sledgehammer finishers: ['by presburger', 'by blast', 'by fast', 'by simp', 'by auto']
+Finishers (origin): [sledge:by presburger, sledge:by blast, sledge:by fast, sledge:by simp, sledge:by auto, llm:by clarsimp, llm:by fastforce, llm:by arith, llm:by meson]
+  finish × [sledge] by presburger  (1668ms)
+  finish × [sledge] by blast  (2106ms)
+  finish × [sledge] by fast  (2104ms)
+  finish × [sledge] by simp  (2097ms)
+  finish × [sledge] by auto  (2108ms)
+  finish × [llm] by clarsimp  (2104ms)
+  finish × [llm] by fastforce  (2103ms)
+  finish × [llm] by arith  (2103ms)
+  finish × [llm] by meson  (2094ms)
+Proposals (origin): [llm:apply blast, llm:apply auto, llm:apply simp, llm:apply clarify, llm:apply fastforce, llm:apply metis]
+[planner] F11 stage-B: prover returned success=False (keys=['goal', 'success', 'steps', 'depth', 'use_calls', 'elapsed_s', 'model'])
+[planner]   ❌ planner error: requests.exceptions.ReadTimeout: HTTPConnectionPool(host='127.0.0.1', port=11434): Read timed out. (read timeout=16)
+[mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict] (run 1/1) [4/5] (∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)
+[planner] ▶ goal: (∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)
+[planner]   mode=auto k=1 timeout=60s repairs=True
+
+▶ Goal: (∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)
+Models: ollama:qwen2.5-coder:7b | Beam=3 | MaxDepth=6 | Timeout=23s
+Sledgehammer finishers: ['by blast', 'by fast', 'by auto', 'by metis', 'by fastforce']
+Finishers (origin): [sledge:by blast, sledge:by fast, sledge:by auto, sledge:by metis, sledge:by fastforce, llm:by simp, llm:by clarsimp, llm:by arith, llm:by presburger, llm:by meson]
+  finish × [sledge] by blast  (1622ms)
+  finish × [sledge] by fast  (2103ms)
+  finish × [sledge] by auto  (2106ms)
+  finish × [sledge] by metis  (2108ms)
+  finish × [sledge] by fastforce  (2106ms)
+  finish × [llm] by simp  (2098ms)
+  finish × [llm] by clarsimp  (2111ms)
+  finish × [llm] by arith  (2102ms)
+  finish × [llm] by presburger  (2095ms)
+  finish × [llm] by meson  (2105ms)
+[planner] F11 stage-B: prover returned success=False (keys=['goal', 'success', 'steps', 'depth', 'use_calls', 'elapsed_s', 'model'])
+[planner]   outline chars=228 fills=0 failed_holes=1
+Current proof outline:
+lemma "(∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)"
+proof -
+  assume H1: "∀x. P x ⟶ Q x" and H2: "∃x. P x"
+  from H2 obtain a where Pa: "P a" by blast
+  have Qa: "Q a" using H1 Pa by simp
+  show "∃x. Q x" by (rule exI, fact Qa)
+qed
+
+[planner]   verifying with Isabelle…
+session_id: b37f57d7-6f8a-417a-832c-a74a7a68ec65 | session: HOL
+[planner]   verify=fail
+[planner]   done in 68.04s | success=False had_sorry=False verified_ok=False
+[mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict] (run 1/1) [5/5] (∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x))
+[planner] ▶ goal: (∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x))
+[planner]   mode=auto k=1 timeout=60s repairs=True
+
+▶ Goal: (∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x))
+Models: ollama:qwen2.5-coder:7b | Beam=3 | MaxDepth=6 | Timeout=23s
+Sledgehammer finishers: ['by presburger', 'by simp', 'by auto', 'by blast', 'by force']
+Finishers (origin): [sledge:by presburger, sledge:by simp, sledge:by auto, sledge:by blast, sledge:by force, llm:by clarsimp, llm:by fastforce, llm:by arith, llm:by meson]
+  finish × [sledge] by presburger  (1602ms)
+  finish × [sledge] by simp  (2091ms)
+  finish × [sledge] by auto  (2105ms)
+  finish × [sledge] by blast  (2108ms)
+  finish × [sledge] by force  (2102ms)
+  finish × [llm] by clarsimp  (2098ms)
+  finish × [llm] by fastforce  (2102ms)
+  finish × [llm] by arith  (2110ms)
+  finish × [llm] by meson  (2099ms)
+Proposals (origin): [llm:apply auto, llm:apply simp, llm:apply clarsimp, llm:apply (cases xs), llm:apply (induction xs)]
+[planner] F11 stage-B: prover returned success=False (keys=['goal', 'success', 'steps', 'depth', 'use_calls', 'elapsed_s', 'model'])
+[fill] State block (length=190):
+proof (state)
+this:
+  \<forall>x. P x = Q x
+
+goal (1 subgoal):
+ 1. (\<forall>x. P x = Q x) \<longrightarrow> (\<forall>x. R x \<longrightarrow> P x) = (\<forall>x. R x \<longrightarrow> Q x)
+
+▶ Goal: (∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x))
+Models: ollama:qwen2.5-coder:7b | Beam=3 | MaxDepth=6 | Timeout=5s
+Sledgehammer finishers: ['by presburger', 'by simp', 'by blast', 'by auto', 'by force']
+Finishers (origin): [sledge:by presburger, sledge:by simp, sledge:by blast, sledge:by auto, sledge:by force, llm:by clarsimp, llm:by fastforce]
+[fill] Fill made no progress. Escalating to repair stage 1...
+[planner]   outline chars=194 fills=0 failed_holes=0
+Current proof outline:
+lemma "(∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x))"
+proof -
+  assume h1: "∀x. P x ⟷ Q x"
+  have f1: "∀x. R x ⟶ P x ⟷ ∀x. R x ⟶ Q x" sorry
+    sorry
+  show ?thesis using f1 by simp
+qed
+
+[planner]   done in 76.93s | success=False had_sorry=True verified_ok=True
+
+=== Planner Benchmark Report ===
+Suite:  smoke_f11
+Config: mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict
+  Success: 0 / 5  (0.0%)
+  Median time (all): 66.28s | Median fills: 0
+CSV → datasets/planner_results/20260526-161859-smoke_f11-mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict.csv

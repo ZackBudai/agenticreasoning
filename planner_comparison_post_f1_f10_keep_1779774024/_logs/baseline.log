@@ -1,0 +1,76 @@
+server "planner" = 127.0.0.1:42503 (password "737eec57-fa6b-40ed-aabe-b4f3d5b70809")
+session_id: [TaskOK(response_type=<IsabelleResponseType.OK: 'OK'>, response_body=Task(task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=None), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Pure/Pure', pos=None, task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=117), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Misc/Tools', pos=None, task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=118), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session HOL/HOL (main)', pos=None, task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=122), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Pure/Pure', pos=None, task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=117), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session Misc/Tools', pos=None, task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=118), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Session HOL/HOL (main)', pos=None, task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=122), NotificationResponse(response_type=<IsabelleResponseType.NOTE: 'NOTE'>, response_body=MessageNotification(kind='writeln', message='Starting session HOL ...', pos=None, task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7'), response_length=125), SessionStartRegularResponse(response_type=<IsabelleResponseType.FINISHED: 'FINISHED'>, response_body=SessionStartRegularResult(task='c483c6c2-42b6-4e7d-b2f6-d065d50e8ee7', session_id='3e9c8479-50dc-4e42-9e6b-4d15b97b0f67', tmp_dir='/tmp/isabelle-zack/server_session13009992183695322619'), response_length=175)] | session: HOL
+
+=== Planner suite: hard_25 (25 goals) ===
+[mode_auto__k1__t60__repairs_on__model_ollama:qwen2.5-coder:7b__verify__strict] (run 1/1) [1/25] (∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)
+[planner] ▶ goal: (∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)
+[planner]   mode=auto k=1 timeout=60s repairs=True
+Traceback (most recent call last):
+  File "/usr/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/solution/.venv/lib/python3.13/site-packages/isabelle_client/isabelle_client.py", line 119, in execute_command
+    return [
+           ^
+    ...<4 lines>...
+    ]
+    ^
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/solution/.venv/lib/python3.13/site-packages/isabelle_client/socket_communication.py", line 123, in get_final_message
+    response = await get_response_from_isabelle(reader)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/solution/.venv/lib/python3.13/site-packages/isabelle_client/socket_communication.py", line 69, in get_response_from_isabelle
+    response = (await reader.readline()).decode("utf-8")
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/streams.py", line 562, in readline
+    line = await self.readuntil(sep)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/asyncio/streams.py", line 677, in readuntil
+    await self._wait_for_data('readuntil')
+  File "/usr/lib/python3.13/asyncio/streams.py", line 539, in _wait_for_data
+    await self._waiter
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/baseline/planner/experiments.py", line 1235, in <module>
+    main()
+    ~~~~^^
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/baseline/planner/experiments.py", line 1232, in main
+    args.func(args)
+    ~~~~~~~~~^^^^^^
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/baseline/planner/experiments.py", line 628, in cmd_bench
+    row, outline_text, verify_details = _bench_run_one(
+                                        ~~~~~~~~~~~~~~^
+        isabelle, session_id, g, cfg,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        model=args.model, diverse=bool(args.diverse)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/baseline/planner/experiments.py", line 431, in _bench_run_one
+    res, plan_err = _safe_plan_and_fill(goal=goal, model=model, cfg=call_cfg)
+                    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/baseline/planner/experiments.py", line 353, in _safe_plan_and_fill
+    res = plan_and_fill(
+        goal,
+    ...<13 lines>...
+        hintlex_path=cfg.hintlex, hintlex_top=cfg.hintlex_top,
+    )
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/baseline/planner/driver.py", line 444, in plan_and_fill
+    session = isa.session_start(session=ISABELLE_SESSION)
+  File "/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/solution/.venv/lib/python3.13/site-packages/isabelle_client/isabelle_client.py", line 254, in session_start
+    raw_responses = asyncio.run(
+        self.execute_command(f"session_start {json.dumps(arguments)}")
+    )
+  File "/usr/lib/python3.13/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.13/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt

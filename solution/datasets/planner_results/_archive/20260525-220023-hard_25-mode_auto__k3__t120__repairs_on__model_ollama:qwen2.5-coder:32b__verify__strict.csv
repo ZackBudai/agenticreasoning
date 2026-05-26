@@ -1,0 +1,26 @@
+goal,success,elapsed_s,mode,model,outline_chars,fills,failed_holes,had_sorry,verified_ok
+(∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x),False,136.1569,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+(∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x)),False,144.1214,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+(∀x. P x) ⟶ ((∀x. Q x ⟶ R x) ⟶ (∀x. P x ∧ Q x ⟶ R x)),False,143.9358,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+(∃x. P x ∧ (Q x ⟶ R x)) ⟶ ((∃x. P x ∧ Q x) ⟶ (∃x. R x)),False,143.9888,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+(if A then f x else f y) = f (if A then x else y),False,143.9203,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+(if A then (B ⟶ C) else True) ⟷ (¬ A ∨ (B ⟶ C)),False,144.7336,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+(∀x. f x = g x) ⟶ (∃!x. f x = a) ⟶ (∃!x. g x = a),False,143.7785,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+(∃!x. P x) ⟶ (∀x y. P x ∧ P y ⟶ x = y),False,143.5418,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ card (A ∪ B) = card A + card (B - A),False,144.7107,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ card (A ∩ B) + card (A - B) = card A - card (A ∩ (B - A)),False,145.1922,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ finite B ⟹ A ∩ B = {} ⟹ card (A ∪ B) = card A + card B,False,145.7839,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ card {x∈A. P x ∧ Q x} + card {x∈A. P x ∧ ¬ Q x} = card {x∈A. P x},False,147.9228,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ card {x∈A. P x} + card {x∈A. ¬ P x} = card A,False,143.2671,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ inj_on f A ⟹ card (f ` A) = card A,False,145.0408,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ card ((A × B) ∩ (C × D)) = card (A ∩ C) * card (B ∩ D),False,142.5314,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ finite B ⟹ card (A × B - C) = card (A × B) - card (C ∩ (A × B)),False,144.1273,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ sum (λx. (if x∈B then (1::nat) else 0)) A = card (A ∩ B),False,143.5816,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ sum (λx. (if P x then (1::nat) else 0)) A = card {x∈A. P x},False,143.2546,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ sum (λx. (if x∈A then (0::int) else 0)) A = 0,False,142.9262,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ sum (λx. c::int) A = c * int (card A),False,143.0179,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ sum (λx. f x + g x::int) A = sum f A + sum g A,False,145.2485,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ (∀x∈A. f x = g x) ⟶ sum f A = (sum g A::int),False,143.4965,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ card (A - {x}) = (if x∈A then card A - 1 else card A),False,142.7376,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+finite A ⟹ card (insert x A) = (if x∈A then card A else Suc (card A)),False,142.7492,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True
+"finite A ⟹ finite B ⟹ card { (x,y)∈A×B. P x ∧ Q y } ≤ card A * card B",False,145.7607,auto,ollama:qwen2.5-coder:32b,0,0,0,False,True

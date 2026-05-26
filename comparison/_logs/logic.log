@@ -1,0 +1,101 @@
+Loading 5 goals from solution/datasets/logic.txt...
+  5 goals loaded.
+
+Starting Isabelle server...
+  server "comparison" = 127.0.0.1:36819 (password "1988a7f5-ae25-48c3-85bc-f021f6d06dfd")
+/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/compare.py:51: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+  d = body.dict() if hasattr(body, "dict") else {}
+  session_id: 7b08a07f-64ab-4b9f-b231-1ca7016a9d5e
+
+Running BASELINE (baseline/ prover, model=ollama:qwen2.5-coder:32b, timeout=30s)...
+
+▶ Goal: (True ∧ P) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by presburger', 'by simp', 'by satx', 'by blast', 'by argo']
+Finishers (origin): [sledge:by presburger, sledge:by simp, sledge:by satx, sledge:by blast, sledge:by argo, llm:by auto, llm:by fastforce, llm:by meson, llm:by (rule iffI)]
+  baseline ✗ (53.1s): (True ∧ P) ⟷ P
+
+▶ Goal: (P ∧ True) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by satx', 'by presburger', 'by argo', 'by auto', 'by fastforce']
+Finishers (origin): [sledge:by satx, sledge:by presburger, sledge:by argo, sledge:by auto, sledge:by fastforce, llm:by simp, llm:by clarsimp, llm:by blast]
+  baseline ✗ (48.3s): (P ∧ True) ⟷ P
+
+▶ Goal: (P ∨ False) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by presburger', 'by simp', 'by satx', 'by auto', 'by argo']
+Finishers (origin): [sledge:by presburger, sledge:by simp, sledge:by satx, sledge:by auto, sledge:by argo, llm:by clarsimp, llm:by fastforce, llm:by blast]
+  baseline ✗ (48.5s): (P ∨ False) ⟷ P
+
+▶ Goal: (¬ ¬ P) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by presburger', 'by simp', 'by argo', 'by satx', 'by auto']
+Finishers (origin): [sledge:by presburger, sledge:by simp, sledge:by argo, sledge:by satx, sledge:by auto, llm:by clarsimp, llm:by fastforce, llm:by blast]
+  baseline ✗ (48.9s): (¬ ¬ P) ⟷ P
+
+▶ Goal: (P ⟶ Q) ⟷ (¬ P ∨ Q)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by presburger', 'by argo', 'by simp', 'by blast', 'by auto']
+Finishers (origin): [sledge:by presburger, sledge:by argo, sledge:by simp, sledge:by blast, sledge:by auto, llm:by fastforce, llm:by (rule iffI)]
+  baseline ✗ (64.4s): (P ⟶ Q) ⟷ (¬ P ∨ Q)
+  Baseline: 0/5 proved → comparison/logic/baseline_results.thy
+
+Running SOLUTION (model=ollama:qwen2.5-coder:32b, timeout=120s)...
+
+▶ Goal: (True ∧ P) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by presburger', 'by argo', 'by simp', 'by satx', 'by auto']
+Finishers (origin): [sledge:by presburger, sledge:by argo, sledge:by simp, sledge:by satx, sledge:by auto, llm:by fastforce, llm:by blast, llm:by meson, llm:by (rule iffI)]
+  finish ✓ [sledge] by presburger  (2394ms)
+✔ PROVED
+  solution ✓ (67.1s): (True ∧ P) ⟷ P
+
+▶ Goal: (P ∧ True) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by presburger', 'by simp', 'by argo', 'by satx', 'by blast']
+Finishers (origin): [sledge:by presburger, sledge:by simp, sledge:by argo, sledge:by satx, sledge:by blast, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by meson]
+  finish ✓ [sledge] by presburger  (2378ms)
+✔ PROVED
+  solution ✓ (52.1s): (P ∧ True) ⟷ P
+
+▶ Goal: (P ∨ False) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by presburger', 'by simp', 'by satx', 'by argo', 'by auto']
+Finishers (origin): [sledge:by presburger, sledge:by simp, sledge:by satx, sledge:by argo, sledge:by auto, llm:by (rule iffI), llm:by (cases P, simp_all), llm:by (clarsimp), llm:by (presburger)]
+  finish ✓ [sledge] by presburger  (2410ms)
+✔ PROVED
+  solution ✓ (67.6s): (P ∨ False) ⟷ P
+
+▶ Goal: (¬ ¬ P) ⟷ P
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by simp', 'by presburger', 'by satx', 'by argo', 'by auto']
+Finishers (origin): [sledge:by simp, sledge:by presburger, sledge:by satx, sledge:by argo, sledge:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  finish ✓ [sledge] by simp  (2262ms)
+✔ PROVED
+  solution ✓ (55.2s): (¬ ¬ P) ⟷ P
+
+▶ Goal: (P ⟶ Q) ⟷ (¬ P ∨ Q)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by argo', 'by presburger', 'by satx', 'by simp', 'by blast']
+Finishers (origin): [sledge:by argo, sledge:by presburger, sledge:by satx, sledge:by simp, sledge:by blast, llm:by auto, llm:by fastforce, llm:by (rule imp_disj)]
+  finish ✓ [sledge] by argo  (2378ms)
+✔ PROVED
+  solution ✓ (84.5s): (P ⟶ Q) ⟷ (¬ P ∨ Q)
+  Solution: 5/5 proved → comparison/logic/solution_results.thy
+
+============================================================
+RESULTS SUMMARY (5 goals)
+============================================================
+Goal                                           Baseline  Solution
+-----------------------------------------------------------------
+  (True ∧ P) ⟷ P                                 failed    PROVED
+  (P ∧ True) ⟷ P                                 failed    PROVED
+  (P ∨ False) ⟷ P                                failed    PROVED
+  (¬ ¬ P) ⟷ P                                    failed    PROVED
+  (P ⟶ Q) ⟷ (¬ P ∨ Q)                            failed    PROVED
+-----------------------------------------------------------------
+  TOTAL                                            0/5      5/5
+
+Theory files written to comparison/logic/
+  Load in Isabelle: isabelle jedit -d comparison/logic baseline_results.thy
+  Or build session: isabelle build -d comparison/logic Comparison

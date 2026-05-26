@@ -35,6 +35,7 @@ from asyncio.base_subprocess import BaseSubprocessTransport as _BST
 # Planner + Isabelle
 from planner.driver import plan_and_fill
 from planner.skeleton import find_sorry_spans
+from planner.goals import strict_verify_responses, _run_theory_with_timeout
 from prover.isabelle_api import (
     start_isabelle_server,
     get_isabelle_client,
@@ -95,6 +96,10 @@ def _planner_atexit_drain():
 BENCH_DIR = Path("datasets")
 RESULTS_DIR = BENCH_DIR / "planner_results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# F10: hard cap on the bench-level final-verify Isabelle run so a single sledge-heavy
+# outline can't hang the whole benchmark. Override via env if needed.
+_BENCH_VERIFY_TIMEOUT_S = int(os.environ.get("BENCH_VERIFY_TIMEOUT_S", "60"))
 
 # default structured log path (append-only JSONL)
 LOGS_DIR = Path("logs")
@@ -215,72 +220,22 @@ def _responses_to_text(resps) -> str:
     return "\n".join(chunks)
 
 def _verify_full_isar(isabelle, session_id: str, isar_text: str) -> Tuple[bool, str]:
-    """
-    Compile a full Isar theory and return (ok, brief_diag).
-    This is a completely new implementation that properly parses Isabelle's JSON responses
-    to avoid the false positives of previous versions.
+    """Compile a full Isar theory and return (ok, brief_diag).
+
+    Delegates the structured-response parsing to `planner.goals.strict_verify_responses`
+    so Fill and the bench harness can never disagree on what counts as success.
+    F10: bounded by `_BENCH_VERIFY_TIMEOUT_S` (default 60s) so a sledge-laden outline
+    can't hang verification indefinitely.
     """
     try:
-        # Step 1: Prepare and run the theory, assuming isar_text is a complete file.
         theory_lines = _normalize_isar_for_verify(isar_text).splitlines()
         if not theory_lines:
             return False, "Empty proof provided."
-            
         thy = build_theory(theory_lines, add_print_state=False, end_with=None)
-        resps = run_theory(isabelle, session_id, thy)
-
-        # Step 2: Intelligently parse responses instead of naive string matching.
-        # We look for the final summary message from Isabelle.
-        final_summary = None
-        all_errors = []
-        for r in reversed(resps or []):
-            body = getattr(r, "response_body", None)
-            if not isinstance(body, (str, bytes)):
-                continue
-            
-            text_body = body.decode(errors="replace") if isinstance(body, bytes) else body
-            try:
-                # A summary will be a JSON object with "ok" and "errors" keys.
-                data = json.loads(text_body)
-                if isinstance(data, dict):
-                    if "ok" in data and "errors" in data:
-                        final_summary = data
-                        break # We found the main summary.
-                    # Also collect individual error messages.
-                    if data.get("kind") == "error" and "message" in data:
-                        all_errors.append(data["message"])
-
-            except json.JSONDecodeError:
-                continue # This response was not a valid JSON object.
-
-        # Step 3: Make a final decision based on the parsed summary.
-        if final_summary:
-            is_ok = final_summary.get("ok", False)
-            errors_list = final_summary.get("errors", [])
-            if is_ok and not errors_list:
-                return True, ""  # Definitive success.
-            else:
-                # Definitive failure. Format the error message.
-                error_msgs = [e.get("message", "Unknown error") for e in errors_list]
-                diag = "Isabelle reported failure:\n" + "\n".join(error_msgs)
-                return False, diag
-
-        # Step 4: Fallback if no JSON summary was found (e.g., older Isabelle version).
-        # Check for legacy error markers.
-        all_txt = _responses_to_text(resps)
-        if any(e in all_txt for e in ("*** Error:", "*** Outer syntax error", "*** Failed")):
-             return False, f"[Legacy error detected]\n{all_txt[-1000:]}"
-        
-        # If no errors were found, and we saw signs of completion, assume success.
-        if "100%" in all_txt or "theory processed" in all_txt:
-            return True, ""
-
-        # If all else fails, we have to assume failure.
-        diag = "Verification inconclusive. No summary found."
-        if all_errors:
-            diag += "\nDetected errors:\n" + "\n".join(all_errors)
-        return False, diag
-
+        resps = _run_theory_with_timeout(isabelle, session_id, thy, timeout_s=_BENCH_VERIFY_TIMEOUT_S)
+        return strict_verify_responses(resps)
+    except TimeoutError:
+        return False, f"verify_timeout: exceeded {_BENCH_VERIFY_TIMEOUT_S}s"
     except Exception as e:
         return False, f"verify_error: {type(e).__name__}: {e}"
 

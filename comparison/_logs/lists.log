@@ -1,0 +1,297 @@
+Loading 18 goals from solution/datasets/lists.txt...
+  18 goals loaded.
+
+Starting Isabelle server...
+  server "comparison" = 127.0.0.1:36819 (password "1988a7f5-ae25-48c3-85bc-f021f6d06dfd")
+/home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/compare.py:51: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+  d = body.dict() if hasattr(body, "dict") else {}
+  session_id: 29465779-e8cb-40f8-9c9b-36b0c90a7dac
+
+Running BASELINE (baseline/ prover, model=ollama:qwen2.5-coder:32b, timeout=30s)...
+
+▶ Goal: rev (rev xs) = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by auto', 'by simp', 'by fastforce', 'by force', 'by (metis rev_rev_ident)']
+Finishers (origin): [sledge:by auto, sledge:by simp, sledge:by fastforce, sledge:by force, sledge:by (metis rev_rev_ident), llm:by refl, llm:by (rule rev_involution), llm:by (induction xs; simp), llm:by (clarsimp intro: rev_induct)]
+  baseline ✗ (62.7s): rev (rev xs) = xs
+
+▶ Goal: xs @ [] = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by simp', 'by auto', 'by blast', 'by fast', 'by fastforce']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by blast, sledge:by fast, sledge:by fastforce, llm:by clarsimp, llm:by presburger]
+  baseline ✗ (51.1s): xs @ [] = xs
+
+▶ Goal: [] @ xs = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by simp', 'by auto', 'by blast', 'by fast', 'by force']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by blast, sledge:by fast, sledge:by force, llm:by clarsimp, llm:by fastforce, llm:by presburger, llm:by meson]
+  baseline ✗ (52.1s): [] @ xs = xs
+
+▶ Goal: rev (xs @ ys) = rev ys @ rev xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by (metis append_Nil rev_append)]
+  baseline ✗ (82.3s): rev (xs @ ys) = rev ys @ rev xs
+
+▶ Goal: map id xs = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  baseline ✗ (54.8s): map id xs = xs
+
+▶ Goal: map f (xs @ ys) = map f xs @ map f ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by simp', 'by auto', 'by fastforce', 'by force', 'by (metis map_append)']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by fastforce, sledge:by force, sledge:by (metis map_append), llm:by clarsimp, llm:by blast, llm:by presburger]
+  baseline ✗ (76.0s): map f (xs @ ys) = map f xs @ map f ys
+
+▶ Goal: map f (rev xs) = rev (map f xs)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by blast, llm:by presburger, llm:by meson]
+  baseline ✗ (64.7s): map f (rev xs) = rev (map f xs)
+
+▶ Goal: length (xs @ ys) = length xs + length ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by blast, llm:by presburger, llm:by linarith, llm:by meson]
+  baseline ✗ (58.6s): length (xs @ ys) = length xs + length ys
+
+▶ Goal: length (rev xs) = length xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer finishers: ['by simp', 'by auto', 'by force', 'by fastforce', 'by (metis length_rev)']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by force, sledge:by fastforce, sledge:by (metis length_rev), llm:by clarsimp, llm:by blast, llm:by presburger]
+  baseline ✗ (53.8s): length (rev xs) = length xs
+
+▶ Goal: take (length xs) (xs @ ys) = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by blast, llm:by arith, llm:by presburger]
+  baseline ✗ (56.2s): take (length xs) (xs @ ys) = xs
+
+▶ Goal: drop (length xs) (xs @ ys) = ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by arith, llm:by presburger]
+  baseline ✗ (59.4s): drop (length xs) (xs @ ys) = ys
+
+▶ Goal: take n xs @ drop n xs = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger, llm:by meson]
+  baseline ✗ (70.4s): take n xs @ drop n xs = xs
+
+▶ Goal: set (xs @ ys) = set xs ∪ set ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger]
+  baseline ✗ (60.9s): set (xs @ ys) = set xs ∪ set ys
+
+▶ Goal: x ∈ set xs ⟹ x ∈ set (xs @ ys)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by (metis append.simps(1) list.set_intros(2)), llm:by (intro subsetD), llm:by (rule_tac x=x in set_append_code), llm:by (clarsimp simp: in_set_conv_nth)]
+  baseline ✗ (91.2s): x ∈ set xs ⟹ x ∈ set (xs @ ys)
+
+▶ Goal: x ∈ set ys ⟹ x ∈ set (xs @ ys)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by (metis append_Cons append_Nil list.simps(1) set_append), llm:by (clarsimp), llm:by (rule conjI, assumption), llm:by (cases xs, simp_all)]
+  baseline ✗ (90.3s): x ∈ set ys ⟹ x ∈ set (xs @ ys)
+
+▶ Goal: distinct xs ⟹ distinct (rev xs)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  baseline ✗ (77.9s): distinct xs ⟹ distinct (rev xs)
+
+▶ Goal: filter p (xs @ ys) = filter p xs @ filter p ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by (metis append.assoc append_Nil filter.simps(1) filter.simps(2)), llm:by (rule_tac xs=xs and ys=ys in filter_append), llm:by (induct xs, auto)]
+  baseline ✗ (103.9s): filter p (xs @ ys) = filter p xs @ filter p ys
+
+▶ Goal: map f (filter p xs) = filter (λx. p x) (map f xs)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=30s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger]
+  baseline ✗ (71.4s): map f (filter p xs) = filter (λx. p x) (map f xs)
+  Baseline: 0/18 proved → comparison/lists/baseline_results.thy
+
+Running SOLUTION (model=ollama:qwen2.5-coder:32b, timeout=120s)...
+
+▶ Goal: rev (rev xs) = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger]
+  finish ✓ [llm] by simp  (2379ms)
+✔ PROVED
+  solution ✓ (73.3s): rev (rev xs) = xs
+
+▶ Goal: xs @ [] = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by simp', 'by auto', 'by blast', 'by fast', 'by force']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by blast, sledge:by fast, sledge:by force, llm:by clarsimp, llm:by fastforce, llm:by presburger]
+  finish ✓ [sledge] by simp  (2269ms)
+✔ PROVED
+  solution ✓ (55.1s): xs @ [] = xs
+
+▶ Goal: [] @ xs = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by simp', 'by auto', 'by blast', 'by fast', 'by force']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by blast, sledge:by fast, sledge:by force, llm:by clarsimp, llm:by fastforce, llm:by presburger]
+  finish ✓ [sledge] by simp  (2268ms)
+✔ PROVED
+  solution ✓ (54.2s): [] @ xs = xs
+
+▶ Goal: rev (xs @ ys) = rev ys @ rev xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger]
+  finish ✓ [llm] by simp  (2268ms)
+✔ PROVED
+  solution ✓ (68.7s): rev (xs @ ys) = rev ys @ rev xs
+
+▶ Goal: map id xs = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer finishers: ['by simp', 'by auto', 'by force', 'by fastforce', 'by (metis list.map_id)']
+Finishers (origin): [sledge:by simp, sledge:by auto, sledge:by force, sledge:by fastforce, sledge:by (metis list.map_id), llm:by clarsimp, llm:by blast, llm:by meson]
+  finish ✓ [sledge] by simp  (2401ms)
+✔ PROVED
+  solution ✓ (60.4s): map id xs = xs
+
+▶ Goal: map f (xs @ ys) = map f xs @ map f ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by presburger, llm:by meson]
+  finish ✓ [llm] by simp  (2442ms)
+✔ PROVED
+  solution ✓ (91.4s): map f (xs @ ys) = map f xs @ map f ys
+
+▶ Goal: map f (rev xs) = rev (map f xs)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by (induct xs), llm:by (clarsimp), llm:by (rule_tac x=xs in list.induct), llm:by (cases "xs = []")]
+  solution ✗ (133.6s): map f (rev xs) = rev (map f xs)
+
+▶ Goal: length (xs @ ys) = length xs + length ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by arith, llm:by presburger]
+  solution ✗ (135.4s): length (xs @ ys) = length xs + length ys
+
+▶ Goal: length (rev xs) = length xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by blast, llm:by arith, llm:by presburger]
+  finish ✓ [llm] by simp  (2380ms)
+✔ PROVED
+  solution ✓ (106.2s): length (rev xs) = length xs
+
+▶ Goal: take (length xs) (xs @ ys) = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by blast, llm:by presburger, llm:by linarith]
+  finish ✓ [llm] by simp  (2408ms)
+✔ PROVED
+  solution ✓ (91.9s): take (length xs) (xs @ ys) = xs
+
+▶ Goal: drop (length xs) (xs @ ys) = ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  finish ✓ [llm] by simp  (2392ms)
+✔ PROVED
+  solution ✓ (88.7s): drop (length xs) (xs @ ys) = ys
+
+▶ Goal: take n xs @ drop n xs = xs
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by blast, llm:by arith, llm:by presburger, llm:by meson]
+  finish ✓ [llm] by simp  (2378ms)
+✔ PROVED
+  solution ✓ (77.6s): take n xs @ drop n xs = xs
+
+▶ Goal: set (xs @ ys) = set xs ∪ set ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by auto, llm:by (simp add: set_append), llm:by (induct xs), llm:by (rule_tac x=ys in exI, simp), llm:by (cases xs, simp_all)]
+  finish ✓ [llm] by simp  (2266ms)
+✔ PROVED
+  solution ✓ (89.6s): set (xs @ ys) = set xs ∪ set ys
+
+▶ Goal: x ∈ set xs ⟹ x ∈ set (xs @ ys)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  finish ✓ [llm] by simp  (2273ms)
+✔ PROVED
+  solution ✓ (57.5s): x ∈ set xs ⟹ x ∈ set (xs @ ys)
+
+▶ Goal: x ∈ set ys ⟹ x ∈ set (xs @ ys)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by meson]
+  finish ✓ [llm] by simp  (2264ms)
+✔ PROVED
+  solution ✓ (72.5s): x ∈ set ys ⟹ x ∈ set (xs @ ys)
+
+▶ Goal: distinct xs ⟹ distinct (rev xs)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by blast, llm:by presburger, llm:by meson]
+  finish ✓ [llm] by simp  (2265ms)
+✔ PROVED
+  solution ✓ (58.5s): distinct xs ⟹ distinct (rev xs)
+
+▶ Goal: filter p (xs @ ys) = filter p xs @ filter p ys
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by fastforce, llm:by blast, llm:by presburger]
+  finish ✓ [llm] by simp  (2269ms)
+✔ PROVED
+  solution ✓ (87.9s): filter p (xs @ ys) = filter p xs @ filter p ys
+
+▶ Goal: map f (filter p xs) = filter (λx. p x) (map f xs)
+Models: ollama:qwen2.5-coder:32b | Beam=3 | MaxDepth=8 | Timeout=120s
+Sledgehammer yielded no finishers at this depth
+Finishers (origin): [llm:by simp, llm:by clarsimp, llm:by auto, llm:by blast, llm:by presburger, llm:by (simp add: filter_map)]
+  finish × [llm] by simp  (2282ms)
+  finish × [llm] by clarsimp  (2100ms)
+  finish × [llm] by auto  (2104ms)
+  finish × [llm] by blast  (2104ms)
+  finish × [llm] by presburger  (2207ms)
+  finish × [llm] by (simp add: filter_map)  (2015ms)
+Proposals (origin): [llm:apply (induction xs), llm:apply simp, llm:apply (cases "p x"), llm:apply (simp add: map_def filter_def), llm:apply fastforce, llm:apply (clarsimp split: if_splits)]
+  solution ✗ (144.2s): map f (filter p xs) = filter (λx. p x) (map f xs)
+  Solution: 15/18 proved → comparison/lists/solution_results.thy
+
+============================================================
+RESULTS SUMMARY (18 goals)
+============================================================
+Goal                                           Baseline  Solution
+-----------------------------------------------------------------
+  rev (rev xs) = xs                              failed    PROVED
+  xs @ [] = xs                                   failed    PROVED
+  [] @ xs = xs                                   failed    PROVED
+  rev (xs @ ys) = rev ys @ rev xs                failed    PROVED
+  map id xs = xs                                 failed    PROVED
+  map f (xs @ ys) = map f xs @ map f ys          failed    PROVED
+  map f (rev xs) = rev (map f xs)                failed    failed
+  length (xs @ ys) = length xs + length ys       failed    failed
+  length (rev xs) = length xs                    failed    PROVED
+  take (length xs) (xs @ ys) = xs                failed    PROVED
+  drop (length xs) (xs @ ys) = ys                failed    PROVED
+  take n xs @ drop n xs = xs                     failed    PROVED
+  set (xs @ ys) = set xs ∪ set ys                failed    PROVED
+  x ∈ set xs ⟹ x ∈ set (xs @ ys)                 failed    PROVED
+  x ∈ set ys ⟹ x ∈ set (xs @ ys)                 failed    PROVED
+  distinct xs ⟹ distinct (rev xs)                failed    PROVED
+  filter p (xs @ ys) = filter p xs @ filter p    failed    PROVED
+  map f (filter p xs) = filter (λx. p x) (map    failed    failed
+-----------------------------------------------------------------
+  TOTAL                                            0/18     15/18
+
+Theory files written to comparison/lists/
+  Load in Isabelle: isabelle jedit -d comparison/lists baseline_results.thy
+  Or build session: isabelle build -d comparison/lists Comparison

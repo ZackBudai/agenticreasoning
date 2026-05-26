@@ -1,0 +1,47 @@
+{
+  "dataset": "sets",
+  "n_goals": 8,
+  "proved": 8,
+  "results": [
+    {
+      "goal": "{x} \u222a A = insert x A",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "x \u2208 insert y A \u27f7 (x = y \u2228 x \u2208 A)",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "A \u2229 (B \u222a C) = (A \u2229 B) \u222a (A \u2229 C)",
+      "ok": true,
+      "proof": "by auto"
+    },
+    {
+      "goal": "A \u2286 A \u222a B",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "A \u2229 B \u2286 A",
+      "ok": true,
+      "proof": "by simp"
+    },
+    {
+      "goal": "(A \u2286 B \u2227 B \u2286 C) \u27f9 A \u2286 C",
+      "ok": true,
+      "proof": "by auto"
+    },
+    {
+      "goal": "(A \u2286 B \u2227 B \u2286 A) \u27f9 A = B",
+      "ok": true,
+      "proof": "by auto"
+    },
+    {
+      "goal": "set (xs @ ys) = set xs \u222a set ys",
+      "ok": true,
+      "proof": "by simp"
+    }
+  ]
+}

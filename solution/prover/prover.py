@@ -103,6 +103,12 @@ def try_step_cached(
     return ok, n_sub, hint, False, elapsed_ms
 
 
+try:
+    from planner.goals import strict_verify_responses as _strict_verify_responses
+except Exception:
+    _strict_verify_responses = None
+
+
 def try_finish(
     isabelle,
     session_id: str,
@@ -112,7 +118,19 @@ def try_finish(
 ) -> Tuple[bool, float]:
     t0 = time.monotonic()
     thy = build_theory(steps + [fin], add_print_state=False, end_with=None)
-    ok, _ = finished_ok(run_theory(isabelle, session_id, thy, timeout_s=timeout_s))
+    resps = run_theory(isabelle, session_id, thy, timeout_s=timeout_s)
+    ok, _ = finished_ok(resps)
+    # F12: gate finished_ok on the structured-summary verifier (same one Fill and
+    # the bench use). finished_ok reads incremental FINISHED frames and can
+    # over-report when Isabelle keeps streaming after a logical error;
+    # strict_verify_responses checks the authoritative ok/errors summary on the
+    # same response set, so this costs no extra Isabelle call.
+    if ok and _strict_verify_responses is not None:
+        try:
+            ok_strict, _ = _strict_verify_responses(resps)
+            ok = ok and ok_strict
+        except Exception:
+            pass
     return ok, (time.monotonic() - t0) * 1000
 
 

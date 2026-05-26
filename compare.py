@@ -73,13 +73,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model", default="ollama:qwen2.5-coder:1.5b",
                    help="LLM model string for solution prover (default: ollama:qwen2.5-coder:1.5b)")
     p.add_argument("--timeout", type=int, default=60,
-                   help="Per-goal timeout in seconds (default: 60)")
+                   help="Per-goal timeout for the solution prover in seconds (default: 60)")
+    p.add_argument("--baseline-timeout", type=int, default=None,
+                   help="Per-goal timeout for the baseline prover in seconds (default: same as --timeout)")
     p.add_argument("--out-dir", default="comparison",
                    help="Output directory (default: comparison/)")
     p.add_argument("--imports", default="Main",
                    help="Isabelle imports (default: Main)")
     p.add_argument("--sledge-timeout", type=int, default=30,
                    help="Sledgehammer timeout per goal in seconds (default: 30)")
+    p.add_argument("--sledge-only-baseline", action="store_true",
+                   help="Use a sledgehammer-only baseline instead of the baseline/ prover")
     p.add_argument("--trace", action="store_true", help="Verbose prover output")
     return p.parse_args()
 
@@ -96,6 +100,7 @@ def load_goals(path: str, n: int) -> List[str]:
             if len(goals) >= n:
                 break
     return goals
+
 
 
 # ─── Isabelle theory file helpers ────────────────────────────────────────────
@@ -145,18 +150,83 @@ def theory_file(theory_name: str, imports: str, blocks: List[str]) -> str:
 
 # ─── Baseline runner (sledgehammer only, no server management) ───────────────
 
+# Sledgehammer suggestion regexes — mirror the broader patterns used by the
+# solution prover (solution/prover/tactics.py) which work against Isabelle2025
+# where 'Try this:' is prefixed with the prover name (e.g. 'cvc5: Try this: by ...').
+_BASELINE_TRY_THIS = re.compile(r"(?i)(?:try this:\s*)?(by\s+\([^)]+\)|by\s+\w+(?:\s+[^)\n]*)?)")
+_BASELINE_TIMING_TAIL = re.compile(r"\s*\(\s*\d+(?:\.\d+)?\s*(?:ms|s)\s*\)?\s*$", re.IGNORECASE)
+
+def _baseline_extract_finisher(blob: str) -> Optional[str]:
+    """Return first plausible 'by ...' finisher in a flattened sledgehammer response."""
+    seen = set()
+    candidates: List[str] = []
+    for m in _BASELINE_TRY_THIS.finditer(blob):
+        cand = m.group(1).strip()
+        cand = _BASELINE_TIMING_TAIL.sub("", cand).rstrip(",;").strip()
+        if not cand or not cand.startswith("by "):
+            continue
+        if cand in seen:
+            continue
+        seen.add(cand)
+        candidates.append(cand)
+    if not candidates:
+        return None
+    # Prefer simple 'by simp/auto/blast' first, then anything else
+    priority = ("by simp", "by auto", "by blast", "by force", "by fastforce")
+    for p in priority:
+        for c in candidates:
+            if c == p or c.startswith(p + " "):
+                return c
+    return candidates[0]
+
+
+def _baseline_verify_proof(isabelle, session: str, imports: str,
+                           goal: str, proof: str) -> bool:
+    """Re-run the candidate proof to confirm it actually closes the goal (no errors)."""
+    thy = (
+        f"theory ScratchV\n"
+        f"  imports {imports}\n"
+        f"begin\n"
+        f'lemma baseline_verify: "{isa_escape(goal)}"\n'
+        f"  {proof}\n"
+        f"end\n"
+    )
+    tmpdir = tempfile.mkdtemp()
+    try:
+        with open(os.path.join(tmpdir, "ScratchV.thy"), "w", encoding="utf-8") as f:
+            f.write(thy)
+        resps = list(isabelle.use_theories(
+            theories=["ScratchV"], session_id=session, master_dir=tmpdir,
+        ))
+        for r in resps:
+            body = getattr(r, "response_body", None)
+            if body is None:
+                continue
+            blob = str(body)
+            # If Isabelle reports any error, the proof failed
+            if re.search(r"(?i)\bkind=['\"]?error['\"]?", blob) or "Failed to apply" in blob:
+                return False
+        return True
+    except Exception:
+        return False
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 def run_baseline_api(goals: List[str], isabelle, session: str,
                      imports: str, sledge_timeout: int,
                      trace: bool) -> List[Tuple[str, bool]]:
     """
-    Sledgehammer-only baseline using the provided Isabelle client and session.
-    Builds a small theory per goal with a sledgehammer call and looks for
-    'Try this: by ...' suggestions in the response messages.
+    Sledgehammer-only baseline. Per goal:
+      1. Run a .thy that invokes sledgehammer
+      2. Flatten the entire response_body to str (matches solution-prover approach)
+      3. Regex-extract candidate `by ...` finishers
+      4. Verify the top candidate actually closes the goal
     """
     results = []
     for g in goals:
         t0 = time.monotonic()
-        sledge_cmd = f"sledgehammer (timeout: {sledge_timeout})"
+        sledge_cmd = f"sledgehammer [timeout = {int(sledge_timeout)}]"
         thy = (
             f"theory Scratch\n"
             f"  imports {imports}\n"
@@ -170,37 +240,27 @@ def run_baseline_api(goals: List[str], isabelle, session: str,
         ok = False
         tmpdir = tempfile.mkdtemp()
         try:
-            p = os.path.join(tmpdir, "Scratch.thy")
-            with open(p, "w", encoding="utf-8") as f:
+            with open(os.path.join(tmpdir, "Scratch.thy"), "w", encoding="utf-8") as f:
                 f.write(thy)
             resps = list(isabelle.use_theories(
                 theories=["Scratch"],
                 session_id=session,
                 master_dir=tmpdir,
             ))
-            # Sledgehammer suggestions appear as writeln messages inside nodes
+            # Flatten every response_body to text and scan for finishers
+            blob_parts: List[str] = []
             for r in resps:
                 body = getattr(r, "response_body", None)
-                if body is None:
-                    continue
-                if not isinstance(body, dict):
-                    try:
-                        body = body.dict() if hasattr(body, "dict") else {}
-                    except Exception:
-                        body = {}
-                # Check top-level messages (some builds) AND nodes[*].messages
-                all_msgs = list(body.get("messages") or [])
-                for node in (body.get("nodes") or []):
-                    all_msgs.extend(node.get("messages") or [])
-                for msg in all_msgs:
-                    txt = str(msg.get("message", "")) if isinstance(msg, dict) else str(msg)
-                    m = re.search(r"Try this:\s*(by\s+\S.*?)(?:\s*\(|$)", txt)
-                    if m:
-                        proof = f"  {m.group(1).strip()}"
-                        ok = True
-                        break
-                if ok:
-                    break
+                if body is not None:
+                    blob_parts.append(str(body))
+            blob = "\n".join(blob_parts)
+            cand = _baseline_extract_finisher(blob)
+            if cand:
+                if _baseline_verify_proof(isabelle, session, imports, g, cand):
+                    proof = f"  {cand}"
+                    ok = True
+                elif trace:
+                    print(f"  [baseline] candidate '{cand}' did not verify", file=sys.stderr)
         except Exception as e:
             if trace:
                 print(f"  [baseline] error on '{g[:40]}': {e}", file=sys.stderr)
@@ -215,16 +275,20 @@ def run_baseline_api(goals: List[str], isabelle, session: str,
     return results
 
 
-# ─── Solution runner (full prover + planner, no server management) ───────────
+# ─── Prover runner (drives prover.prove_goal from either baseline/ or solution/) ─
 
-def run_solution(goals: List[str], isabelle, session: str, model: str,
-                 timeout: int, trace: bool) -> List[Tuple[str, bool]]:
+def run_prover(folder: str, goals: List[str], isabelle, session: str, model: str,
+               timeout: int, trace: bool, label: Optional[str] = None) -> List[Tuple[str, bool]]:
     """
-    Run the solution prover (with LLM + all improvements) on each goal.
-    Uses the provided Isabelle client and session — no server start/stop.
+    Run prover.prove_goal from the given source folder ("baseline" or "solution")
+    on each goal. Both folders share the same module layout so we can swap
+    sys.path between phases.
+
+    label: tag used in trace output (defaults to folder name).
     """
+    tag = label or folder
     _clear_prover_modules()
-    sys.path.insert(0, str(Path(__file__).parent / "solution"))
+    sys.path.insert(0, str(Path(__file__).parent / folder))
     try:
         from prover.prover import prove_goal
         results = []
@@ -248,41 +312,43 @@ def run_solution(goals: List[str], isabelle, session: str, model: str,
                 )
                 steps = res.get("steps", [])
                 ok = res.get("success", False)
-                # Strip the seed `lemma "..."` line the prover prepends — proof_block()
-                # re-emits the lemma declaration itself, so keeping it here would
-                # produce a duplicate `lemma "..."` inside the proof body (syntax error).
-                tactic_steps = [
+            except Exception as e:
+                if trace:
+                    print(f"  [{tag}] error on goal '{g[:40]}': {e}", file=sys.stderr)
+                proof, ok = "  sorry", False
+            else:
+                tactics = [
                     str(s) for s in steps
                     if not str(s).lstrip().startswith("lemma ")
                 ]
-                if ok and tactic_steps:
-                    proof = "  " + "\n  ".join(s.strip() for s in tactic_steps)
-                    last = tactic_steps[-1].strip()
+                if ok and tactics:
+                    proof = "  " + "\n  ".join(tactics)
+                    last = tactics[-1].strip()
                     if not (last.startswith("by ") or last in ("done", "qed")):
                         proof += "\n  done"
                 else:
-                    # No tactics returned, or prover did not succeed — emit sorry
-                    # so the .thy file is at least syntactically valid.
                     proof = "  sorry"
-                    ok = False
-            except Exception as e:
-                if trace:
-                    print(f"  [solution] error on goal '{g[:40]}': {e}", file=sys.stderr)
-                proof, ok = "  sorry", False
 
             elapsed = time.monotonic() - t0
             if trace:
                 status = "✓" if ok else "✗"
-                print(f"  solution {status} ({elapsed:.1f}s): {g[:50]}")
+                print(f"  {tag} {status} ({elapsed:.1f}s): {g[:50]}")
             results.append((proof, ok))
         return results
     except Exception as e:
-        print(f"[solution] Import failed: {e}", file=sys.stderr)
-        print("[solution] Make sure isabelle is on PATH and OLLAMA_HOST is reachable.",
+        print(f"[{tag}] Import failed: {e}", file=sys.stderr)
+        print(f"[{tag}] Make sure isabelle is on PATH and OLLAMA_HOST is reachable.",
               file=sys.stderr)
         return [("  sorry", False)] * len(goals)
     finally:
         sys.path.pop(0)
+
+
+def run_solution(goals: List[str], isabelle, session: str, model: str,
+                 timeout: int, trace: bool) -> List[Tuple[str, bool]]:
+    """Backwards-compat wrapper: run the solution-folder prover."""
+    return run_prover("solution", goals, isabelle, session, model, timeout, trace,
+                      label="solution")
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
@@ -308,10 +374,18 @@ def main() -> None:
 
     try:
         # ── Baseline ────────────────────────────────────────────────────────
-        print(f"Running BASELINE (sledgehammer only, timeout={args.sledge_timeout}s)...")
-        baseline_results = run_baseline_api(
-            goals, isabelle, session, args.imports, args.sledge_timeout, args.trace
-        )
+        if args.sledge_only_baseline:
+            print(f"Running BASELINE (sledgehammer only, timeout={args.sledge_timeout}s)...")
+            baseline_results = run_baseline_api(
+                goals, isabelle, session, args.imports, args.sledge_timeout, args.trace
+            )
+        else:
+            baseline_to = args.baseline_timeout if args.baseline_timeout is not None else args.timeout
+            print(f"Running BASELINE (baseline/ prover, model={args.model}, timeout={baseline_to}s)...")
+            baseline_results = run_prover(
+                "baseline", goals, isabelle, session, args.model,
+                baseline_to, args.trace, label="baseline",
+            )
 
         baseline_blocks = []
         for i, (goal, (proof, ok)) in enumerate(zip(goals, baseline_results)):

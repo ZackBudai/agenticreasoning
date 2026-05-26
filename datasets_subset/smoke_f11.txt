@@ -1,0 +1,5 @@
+¬ (∀x∈A. P x) ⟷ (∃x∈A. ¬ P x)
+(∃x. P x ∧ Q x) ⟶ (∃x. P x)
+(∀x. P x ⟶ Q) ⟶ ((∃x. P x) ⟶ Q)
+(∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)
+(∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x))

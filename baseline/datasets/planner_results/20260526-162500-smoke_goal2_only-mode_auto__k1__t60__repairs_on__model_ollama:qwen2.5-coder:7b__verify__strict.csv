@@ -1,0 +1,2 @@
+goal,success,elapsed_s,mode,model,outline_chars,fills,failed_holes,had_sorry,verified_ok
+(∃x. P x ∧ Q x) ⟶ (∃x. P x),False,31.8250,auto,ollama:qwen2.5-coder:7b,162,0,1,False,False
