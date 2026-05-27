@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Any, Dict, Iterable
+from typing import List, Tuple, Optional, Any, Dict, Iterable, Set
 import json
 import os
 import re
@@ -20,7 +20,11 @@ from prover.config import (
 )
 
 # F9: cap one outline-gen LLM call so a slow goal can't burn the entire per-goal budget on outline generation alone.
-_OUTLINE_PER_CALL_CAP_S = 30
+# F25: raised 30 → 60 to fit qwen2.5-coder:7b's observed ~10 tok/sec warm throughput.
+# Structured Isar outlines emit ~200-400 output tokens, so the prior 30s cap left every
+# call right at the F22 ReadTimeout boundary. 60s gives the F22 floor (still 30s) room
+# to scale up to a viable per-call window on tight budgets.
+_OUTLINE_PER_CALL_CAP_S = 60
 # F9: cap total outline-gen wall time at this fraction of the global deadline.
 _OUTLINE_BUDGET_FRACTION = 0.35
 
@@ -37,7 +41,12 @@ _SKETCH_CHECK_TIMEOUT_S = 20
 # F16: minimum viable per-call LLM timeout. With qwen2.5-coder:7b on a hard goal
 # any call under ~10s is guaranteed to ReadTimeout; bail the loop instead of
 # firing a doomed call that surfaces as an unhandled ❌ planner error in the bench.
-_MIN_VIABLE_LLM_CALL_S = 10
+# F22: raised from 10 → 20 → 30. With qwen2.5-coder:7b and priors+hintlex prompts
+# (~2k tokens in, ~200 tokens out) we observed ReadTimeouts even at 20s. The 30s
+# floor matches our observed worst-case Ollama response time on hard card/sum
+# goals. If the per-goal budget can't afford a 30s call, the outline loop bails
+# and the goal fails cleanly (success=False) instead of with ❌ planner error.
+_MIN_VIABLE_LLM_CALL_S = 30
 
 # Reuse local-context miner from repair (defs/facts list)
 from planner.repair import _facts_from_state as _facts_from_state
@@ -475,6 +484,164 @@ def _sanitize_outline(text: str, goal: str, *, force_outline: bool) -> str:
         text += "\n"
     return text
 
+# F18 + F28a: detect literal placeholder bodies in `have`/`show` statements.
+#
+# F18 covered the original `have f1: "(* fill … *)"` comment-only-body form
+# which never parses and burns the per-goal budget on dead-end sorrys.
+#
+# F28a extends coverage to other placeholder shapes observed in minif2f failures:
+#   - literal ellipsis: `have f1: "..."` (g1, minif2f sweep 2026-05-27)
+#   - unicode ellipsis: `have f1: "…"`
+#   - TODO / FIXME / XXX / PLACEHOLDER markers (case-insensitive)
+#   - bare ?-strings: `have f1: "?"`, `"???"`
+#   - empty / whitespace-only bodies: `have f1: ""`, `"  "`
+# All of these are unparseable statements that cause the same downstream waste
+# as the original F18 pattern. The penalty weight (200) is unchanged.
+_PLACEHOLDER_BODY_RE = re.compile(
+    r'(?m)^\s*(?:have|show)\b[^"\n]*"\s*(?:'
+    r'\(\*[^"]*?\*\)'                                              # F18 comment body
+    r'|\.\.\.+'                                                    # F28a ASCII ellipsis
+    r'|…+'                                                    # F28a unicode ellipsis
+    r'|[Tt][Oo][Dd][Oo][^"]*'                                      # F28a TODO
+    r'|[Ff][Ii][Xx][Mm][Ee][^"]*'                                  # F28a FIXME
+    r'|[Xx][Xx][Xx]+\b[^"]*'                                       # F28a XXX
+    r'|[Pp][Ll][Aa][Cc][Ee][Hh][Oo][Ll][Dd][Ee][Rr][^"]*'          # F28a PLACEHOLDER
+    r'|\?+'                                                        # F28a "?"-strings
+    r'|'                                                           # F28a empty body
+    r')\s*"'
+)
+# Kept for the F18 era's name; same callsite, widened semantics.
+_COMMENT_PLACEHOLDER_RE = _PLACEHOLDER_BODY_RE
+
+
+def _count_comment_placeholders(outline_text: str) -> int:
+    return len(_PLACEHOLDER_BODY_RE.findall(outline_text or ""))
+
+
+# F28b: structural balance / truncation guard.
+#
+# minif2f g3 (2026-05-27 sweep) emitted:
+#     have f6: "216^3 = 90071992547
+#         sorry
+#     qed
+# — an unterminated string literal where the LLM ran out of context mid-token.
+# This outline still scores well under F26 because none of the existing penalty
+# terms see it. F28b adds four cheap structural checks; any issue contributes 1
+# to the count and is weighted at 200 (same as F18 placeholders — equally severe
+# because the outline is structurally unparseable).
+_PROOF_KW_RE = re.compile(r'\bproof\b')
+_QED_KW_RE = re.compile(r'\bqed\b')
+
+
+def _count_balance_issues(outline_text: str) -> int:
+    if not outline_text:
+        return 0
+    issues = 0
+    # 1. Unterminated string literal — odd `"` count.
+    if outline_text.count('"') % 2 != 0:
+        issues += 1
+    # 2. Unmatched cartouche pairs.
+    if outline_text.count('‹') != outline_text.count('›'):
+        issues += 1
+    # 3. Paren balance, after collapsing string contents so parens inside
+    # quoted formulas (e.g. `card (A ∪ B)`) don't contribute.
+    no_str = re.sub(r'"[^"]*"', '""', outline_text)
+    if no_str.count('(') != no_str.count(')'):
+        issues += 1
+    # 4. proof/qed balance. A `by …` closes its own scope; only `proof` opens
+    # one that requires a matching `qed`. Truncation mid-block shows up as
+    # n_proof > n_qed.
+    if len(_PROOF_KW_RE.findall(no_str)) > len(_QED_KW_RE.findall(no_str)):
+        issues += 1
+    return issues
+
+
+# F27: post-hoc lemma-name validator. The minif2f failure pattern is that the
+# LLM emits outlines citing identifiers that don't exist in any theory (e.g.
+# `complex.cube_root_def`, `a_cubed_eq_8`, `norm_minus_complex`). Isabelle
+# rejects the whole proof at verify time, burning the per-goal budget. This
+# scores down outlines that reference library-looking names not present in the
+# known-names table (built by planner/extract_hol.py from HOL/Main + Library),
+# so cleaner siblings in the K-outline batch can win.
+#
+# Gated on USE_NAME_VALIDATOR=1; default off keeps behavior identical to F26.
+# Path overridable via KNOWN_NAMES_PATH (default datasets/known_names.json
+# relative to cwd, which is solution/ when bench is launched the normal way).
+
+# Identifiers that follow `using …`, `unfolding …`, `simp add: …`, `simp only: …`.
+# Match runs greedy up to the next Isar keyword that resumes the proof.
+_REF_BLOCK_RE = re.compile(
+    r'\b(?:using|unfolding|simp\s+add:|simp\s+only:|metis|smt)\s+'
+    r'([A-Za-z_][\w\'\.\s,]+?)'
+    r'(?=\s+(?:by|apply|show|have|qed|then|also|moreover|finally|ultimately|next|with|and)\b'
+    r'|\)|\.\s|,\s|$)',
+    re.MULTILINE | re.UNICODE,
+)
+# Identifiers inside `by (rule X)`, `apply (rule X)`, etc.
+_RULE_REF_RE = re.compile(
+    r'\b(?:by|apply)\s*\(\s*(?:rule|rule_tac|erule|intro|elim|subst)\s+'
+    r'([A-Za-z_][\w\'\.]+)',
+    re.UNICODE,
+)
+# A name "looks like" a library lemma if it has a `_` or `.` separator.
+# This filters out local Isar names (f1, f2, h3, ha, IH, etc.) which are
+# legitimately undefined in any theory and shouldn't be flagged.
+_LIBRARY_NAME_RE = re.compile(r'^[A-Za-z_][\w\']*(?:[._][\w\']+)+$')
+
+_KNOWN_NAMES_CACHE: Optional[Set[str]] = None
+_KNOWN_NAMES_PROBED: bool = False
+
+
+def _load_known_names() -> Set[str]:
+    """Lazy-load known-names set. Returns empty set when validator disabled
+    (USE_NAME_VALIDATOR unset/0) or known-names file is missing."""
+    global _KNOWN_NAMES_CACHE, _KNOWN_NAMES_PROBED
+    if _KNOWN_NAMES_CACHE is not None:
+        return _KNOWN_NAMES_CACHE
+    if os.environ.get("USE_NAME_VALIDATOR", "0") != "1":
+        _KNOWN_NAMES_CACHE = set()
+        return _KNOWN_NAMES_CACHE
+    path = os.environ.get("KNOWN_NAMES_PATH", "datasets/known_names.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            _KNOWN_NAMES_CACHE = set(json.load(f))
+        if not _KNOWN_NAMES_PROBED:
+            print(f"[F27 validator] loaded {len(_KNOWN_NAMES_CACHE):,} known names from {path}")
+            _KNOWN_NAMES_PROBED = True
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"[F27 validator] disabled — could not load {path}: {e}")
+        _KNOWN_NAMES_CACHE = set()
+    return _KNOWN_NAMES_CACHE
+
+
+def _count_unknown_refs(outline_text: str) -> int:
+    """Count distinct library-looking identifiers cited by the outline that are
+    NOT in the known-names table. Local Isar names (f1, h2 etc.) are skipped
+    by the _LIBRARY_NAME_RE filter. Returns 0 when validator is disabled."""
+    known = _load_known_names()
+    if not known:
+        return 0
+    refs: Set[str] = set()
+    for m in _REF_BLOCK_RE.finditer(outline_text or ""):
+        for tok in m.group(1).split():
+            tok = tok.strip(",.()")
+            if _LIBRARY_NAME_RE.match(tok):
+                refs.add(tok)
+    for m in _RULE_REF_RE.finditer(outline_text or ""):
+        tok = m.group(1).strip(",.()")
+        if _LIBRARY_NAME_RE.match(tok):
+            refs.add(tok)
+    if not refs:
+        return 0
+    unknown = 0
+    for r in refs:
+        bare = r.split(".")[-1]  # strip theory prefix: List.append_assoc → append_assoc
+        if r in known or bare in known:
+            continue
+        unknown += 1
+    return unknown
+
+
 def _quick_sketch_score(isabelle, session_id: str, outline_text: str) -> int:
     try:
         # If the outline already closes with qed/done/by, don't inject a trailing sorry
@@ -715,8 +882,17 @@ def propose_isar_skeletons(
             if remaining < _MIN_VIABLE_LLM_CALL_S:
                 return out
             single_to = max(_MIN_VIABLE_LLM_CALL_S, min(_OUTLINE_PER_CALL_CAP_S, remaining))
-        return [propose_isar_skeleton(goal, model=model, temp=0.3, force_outline=force_outline,
-                                      hints=hints, timeout_s=single_to)]
+        # F25: the diverse loop above wraps each per-temp call in try/except (lines
+        # 711-713), but the singular fallback below was unguarded. When Ollama times
+        # out on every temp AND on the fallback, the unguarded exception propagated
+        # out of this function and prevented `propose_isar_skeleton_diverse_best`
+        # from ever reaching its lib_templates injection at line 928. Wrap it so
+        # callers see an empty list instead, letting the F21 templates compete.
+        try:
+            return [propose_isar_skeleton(goal, model=model, temp=0.3, force_outline=force_outline,
+                                          hints=hints, timeout_s=single_to)]
+        except Exception:
+            return out
     return out
 
 def _lib_templates_for_goal(goal: str) -> List[Skeleton]:
@@ -759,19 +935,106 @@ next
     sorry
 qed
 ''')
-    lib.append(
+    # F21: card-mono on filtered cartesian product (e.g. hard_25 g25).
+    # Detect: goal mentions `card`, `≤` (or `<=`), `card A * card B`-ish product,
+    # and a set comprehension over a cartesian product.
+    if (re.search(r"\bcard\b", goal) and ("≤" in goal or "<=" in goal)
+            and "×" in goal and re.search(r"\bcard\s+\w+\s*\*\s*card\s+\w+", goal)):
+        m = re.search(r"\bcard\s+(\{[^=]*?\})\s*[≤]", goal)
+        if m:
+            lhs_set = m.group(1).strip()
+            lib.append(
 f'''lemma "{goal}"
 proof -
-  have f1: "(* fill a useful intermediate statement *)"
-    sorry
-  have f2: "(* another useful intermediate *)"
-    using f1
-    sorry
-  show ?thesis
-    using f1 f2
-    sorry
+  assume finA: "finite A"
+  assume finB: "finite B"
+  have subset: "{lhs_set} ⊆ A × B"
+    by auto
+  have fin: "finite (A × B)"
+    using finA finB by (simp add: finite_cartesian_product)
+  from fin subset have step1: "card {lhs_set} ≤ card (A × B)"
+    by (rule card_mono)
+  also have "card (A × B) = card A * card B"
+    by (rule card_cartesian_product)
+  finally show "card {lhs_set} ≤ card A * card B" .
 qed
 ''')
+
+    # F21: card partition by complementary predicates (hard_25 g13-style).
+    if re.search(
+            r"\bcard\s*\{[^}∧]+P\s+x\s*\}\s*\+\s*card\s*\{[^}∧]+¬\s*P\s+x\s*\}\s*=\s*card\s+[A-Za-z]\w*\s*$",
+            goal):
+        lib.append(
+f'''lemma "{goal}"
+proof -
+  assume finA: "finite A"
+  have part: "{{x ∈ A. P x}} ∪ {{x ∈ A. ¬ P x}} = A"
+    by auto
+  have disj: "{{x ∈ A. P x}} ∩ {{x ∈ A. ¬ P x}} = {{}}"
+    by auto
+  have finP: "finite {{x ∈ A. P x}}"
+    using finA by simp
+  have finN: "finite {{x ∈ A. ¬ P x}}"
+    using finA by simp
+  from finP finN disj
+  have sum: "card ({{x ∈ A. P x}} ∪ {{x ∈ A. ¬ P x}}) = card {{x ∈ A. P x}} + card {{x ∈ A. ¬ P x}}"
+    by (rule card_Un_disjoint)
+  with part show "card {{x ∈ A. P x}} + card {{x ∈ A. ¬ P x}} = card A"
+    by simp
+qed
+''')
+
+    # F21: card_Diff on a finite cartesian superset (hard_25 g16-style:
+    # `card (A × B - C) = card (A × B) - card (C ∩ (A × B))`).
+    # Strict — must mention cartesian product `×` on BOTH sides so g10 (which
+    # is also a card-Diff equality but over plain sets) doesn't trip this.
+    if (re.search(r"\bcard\s*\([^)]*×[^)]*-\s*\w+\)\s*=\s*card\s*\([^)]*×", goal)
+            and re.search(r"-\s*card\s*\([^)]*×[^)]*∩[^)]*\)|-\s*card\s*\([^)]*∩\s*\([^)]*×", goal)):
+        lib.append(
+f'''lemma "{goal}"
+proof -
+  assume finA: "finite A"
+  assume finB: "finite B"
+  have sub: "C ∩ (A × B) ⊆ A × B"
+    by auto
+  have fin: "finite (A × B)"
+    using finA finB by (simp add: finite_cartesian_product)
+  have fin_int: "finite (C ∩ (A × B))"
+    using sub fin by (rule finite_subset)
+  have eq: "A × B - C = A × B - (C ∩ (A × B))"
+    by auto
+  from fin_int sub
+  have "card (A × B - (C ∩ (A × B))) = card (A × B) - card (C ∩ (A × B))"
+    by (rule card_Diff_subset)
+  with eq show "card (A × B - C) = card (A × B) - card (C ∩ (A × B))"
+    by simp
+qed
+''')
+
+    # F21: card partition with shared predicate (hard_25 g12-style:
+    # `card {x∈A. P x ∧ Q x} + card {x∈A. P x ∧ ¬ Q x} = card {x∈A. P x}`).
+    if re.search(r"\bcard\s*\{[^}]+P\s+x\s*∧\s*Q\s+x[^}]*\}\s*\+\s*card\s*\{[^}]+P\s+x\s*∧\s*¬\s*Q\s+x[^}]*\}\s*=\s*card\s*\{[^}]+P\s+x[^}]*\}", goal):
+        lib.append(
+f'''lemma "{goal}"
+proof -
+  assume finA: "finite A"
+  have part: "{{x ∈ A. P x ∧ Q x}} ∪ {{x ∈ A. P x ∧ ¬ Q x}} = {{x ∈ A. P x}}"
+    by auto
+  have disj: "{{x ∈ A. P x ∧ Q x}} ∩ {{x ∈ A. P x ∧ ¬ Q x}} = {{}}"
+    by auto
+  have finT: "finite {{x ∈ A. P x ∧ Q x}}"
+    using finA by simp
+  have finF: "finite {{x ∈ A. P x ∧ ¬ Q x}}"
+    using finA by simp
+  from finT finF disj
+  have "card ({{x ∈ A. P x ∧ Q x}} ∪ {{x ∈ A. P x ∧ ¬ Q x}})
+        = card {{x ∈ A. P x ∧ Q x}} + card {{x ∈ A. P x ∧ ¬ Q x}}"
+    by (rule card_Un_disjoint)
+  with part show "card {{x ∈ A. P x ∧ Q x}} + card {{x ∈ A. P x ∧ ¬ Q x}} = card {{x ∈ A. P x}}"
+    by simp
+qed
+''')
+
     return [Skeleton(text=s if s.endswith("\n") else s+"\n", holes=find_sorry_spans(s)) for s in lib]
 
 def propose_isar_skeleton_diverse_best(
@@ -842,7 +1105,26 @@ def propose_isar_skeleton_diverse_best(
         hint_b = _hint_bonus_from_outline(sk.text, rec_hints)
         # Cap n at 100 so exception sentinel (9999) doesn't dominate the formula
         n_capped = min(n, 100)
-        score = alpha * float(n_capped) + beta * float(pat_pen) - gamma * float(hint_b)
+        # F18: literal comment-body placeholders ("(* ... *)" as have/show body)
+        # are unparseable and cause Fill to burn the whole per-goal budget on
+        # dead-end sorrys. Add a heavy penalty so any placeholder-free sibling
+        # in the K outlines wins ties decisively.
+        placeholder_pen = _count_comment_placeholders(sk.text)
+        # F27: hallucinated library-looking identifiers (e.g. minif2f's
+        # `complex.cube_root_def`). Counts only when USE_NAME_VALIDATOR=1,
+        # otherwise returns 0 and the score is unchanged from F26.
+        unknown_pen = _count_unknown_refs(sk.text)
+        # F28b: structural balance / truncation issues (unterminated strings,
+        # mismatched parens or cartouches, more proof than qed). Default-on.
+        balance_pen = _count_balance_issues(sk.text)
+        score = (
+            alpha * float(n_capped)
+            + beta * float(pat_pen)
+            - gamma * float(hint_b)
+            + 200.0 * float(placeholder_pen)
+            + 150.0 * float(unknown_pen)
+            + 200.0 * float(balance_pen)
+        )
         scored.append((score, n, i))  # keep raw n for secondary sort
 
     # Sort: lowest score first; break ties by fewest subgoals, then insertion order

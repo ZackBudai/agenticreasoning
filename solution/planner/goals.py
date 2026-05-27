@@ -81,31 +81,48 @@ def strict_verify_responses(resps) -> Tuple[bool, str]:
 # === Isabelle interaction ======================================================
 
 def _run_theory_with_timeout(isabelle, session: str, thy: List[str], *, timeout_s: Optional[int]) -> List:
-    """Execute theory with a hard timeout, interrupting Isabelle if needed."""
+    """Execute theory with a hard timeout, interrupting Isabelle if needed.
+
+    Uses shutdown(wait=False) on timeout so a sledgehammer-stuck worker thread
+    can't block return — the outer plan_and_fill SIGALRM cap relies on this to
+    actually unwind past hung Isabelle calls (F17).
+    """
     timeout_s = timeout_s or _ISA_VERIFY_TIMEOUT_S
-    with ThreadPoolExecutor(max_workers=1) as ex:
-        fut = ex.submit(run_theory, isabelle, session, thy)
+    ex = ThreadPoolExecutor(max_workers=1, thread_name_prefix="isa")
+    fut = ex.submit(run_theory, isabelle, session, thy)
+    try:
+        result = fut.result(timeout=timeout_s)
+        ex.shutdown(wait=True)
+        return result
+    except _FuturesTimeout:
         try:
-            return fut.result(timeout=timeout_s)
-        except _FuturesTimeout:
-            try:
-                getattr(isabelle, "interrupt", lambda: None)()
-            except Exception:
-                pass
-            raise TimeoutError("isabelle_run_timeout")
+            getattr(isabelle, "interrupt", lambda: None)()
+        except Exception:
+            pass
+        ex.shutdown(wait=False)
+        raise TimeoutError("isabelle_run_timeout")
+    except BaseException:
+        ex.shutdown(wait=False)
+        raise
 
 
-def _verify_full_proof(isabelle, session: str, text: str) -> bool:
-    """Return True iff the full Isar text checks under _ISA_VERIFY_TIMEOUT_S.
+def _verify_full_proof(isabelle, session: str, text: str, *, timeout_s: Optional[int] = None) -> bool:
+    """Return True iff the full Isar text checks under timeout_s (default _ISA_VERIFY_TIMEOUT_S).
 
     Uses the same strict structured-error verifier as the bench harness
     (`strict_verify_responses`) so Fill's success signal can't disagree with
     the final bench-level verification (was the cause of `had_sorry=False AND
     verified_ok=False` false positives).
+
+    Callers running speculative finisher attempts (F11 stage-A/A.5) should pass
+    a smaller timeout_s so a single slow tactic (e.g. simp with cong rewriting)
+    can't burn the per-goal budget — 6s is usually enough for any finisher that
+    is going to succeed quickly.
     """
+    eff_to = int(timeout_s) if timeout_s is not None else _ISA_VERIFY_TIMEOUT_S
     try:
         thy = build_theory(text.splitlines(), add_print_state=False, end_with=None)
-        result = _run_theory_with_timeout(isabelle, session, thy, timeout_s=_ISA_VERIFY_TIMEOUT_S)
+        result = _run_theory_with_timeout(isabelle, session, thy, timeout_s=eff_to)
         ok, diag = strict_verify_responses(result)
         if not ok and os.environ.get("DEBUG_VERIFY", "0") in ("1", "true", "True"):
             print(f"[verify-debug] _verify_full_proof rejected:\n--- TEXT ---\n{text}\n--- DIAG ---\n{diag}\n--- END ---")

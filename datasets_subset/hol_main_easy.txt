@@ -1,0 +1,100 @@
+!!k:: 'a::linorder. -lessThan k = atLeast k
+(1 - x) * (\<Sum>i=m..n. x^i) = x^m - x^Suc n
+(A \<union> B) - C = (A - C) \<union> (B - C)
+(\<And>x::unit. PROP P x) \<equiv> PROP P ()
+(\<exists>x y. P x y) = (\<exists>y x. P x y)
+(\<lambda>h::'a::mult_zero. 0) = (*) 0
+(a::'a::group_add) - (b + c) = a - c - b
+(a::'a::idom_divide) div - b = - (a div b)
+(equivclp r)\<^sup>*\<^sup>* = equivclp r
+(if True then x else y) = x
+(if x = y then y else x) = x
+(map_option f opt = None) = (opt = None)
+(n + m) - n = m
+(take n xs = []) = (n = 0 \<or> xs = [])
+(x, x) \<in> R ^^ 0
+(xs @ ys = []) = (xs = [] \<and> ys = [])
+(xs @ ys = xs @ zs) = (ys = zs)
+0 - (a::'a::group_add) = - a
+0 \<notin> Suc ` A
+0 gchoose (Suc k) = 0
+1 + a + a \<noteq> 0
+A = B \<Longrightarrow> A \<subseteq> B
+A \<union> B = fold insert B A
+Ball (f ` A) g = Ball A (g \<circ> f)
+Ball A P = (A \<subseteq> (Collect P))
+Ball UNIV P \<longleftrightarrow> All P
+CARD('a bit1) = Suc (2 * CARD('a::finite))
+HOL.equal k k \<longleftrightarrow> True
+Neg m + Neg n = Neg (m + n)
+Range (r\<inverse>) = Domain r
+UNIV = List.coset []
+UNIV \<inter> B = B
+X = Y \<longleftrightarrow> (x, y) \<in> r
+\<Sum> {0..<card S} \<le> \<Sum> S
+\<exists>!x. t = x
+\<exists>a. b = f a
+\<exists>n. k = int n
+\<exists>x y. p = (x, y)
+\<forall>X \<in> A//r. univ f X \<in> B
+\<forall>x y. P x y \<Longrightarrow> P x y
+\<lambda>x. x \<in> A
+\<nexists>f. f ` A = Pow A
+\<not> [] \<parallel> x
+\<not> finite (UNIV :: num0 set)
+\<top> = (\<lambda>x. x \<in> UNIV)
+a \<ge> 0 \<Longrightarrow> mono ((*) a)
+a \<in> {} \<Longrightarrow> P
+apfst f (apfst g x) = apfst (f \<circ> g) x
+apsnd f (apfst g x) = (g (fst x), f (snd x))
+asymp_on A r \<Longrightarrow> irreflp_on A r
+butlast (rev xs) = rev (tl xs)
+card (A <+> B) = card A + card B
+card {l<..<u} = u - Suc l
+dom (m ++ n) = dom n \<union> dom m
+drop n (map f xs) = map f (drop n xs)
+equivclp (conversep r) = equivclp r
+equivp R \<Longrightarrow> R x x
+f(x := f x) = f
+finite (r\<^sup>+) = finite r
+finite F \<Longrightarrow> finite (h ` F)
+finite {i :: int. a < i \<and> i \<le> b}
+fst (apfst f x) = f (fst x)
+fst bc = (fst \<circ> fstOp P Q) bc
+i \<le> j \<Longrightarrow> k * i \<le> k * j
+insert a B = {x. x = a} \<union> B
+insert x UNIV = UNIV
+inv (\<lambda>a. a) = (\<lambda>a. a)
+irrefl R \<Longrightarrow> irrefl (lexord R)
+last (xs @ [x]) = x
+length (rev xs) = length xs
+length (suffixes xs) = Suc (length xs)
+length (x # xs) = Suc (length xs)
+lfp f = (f ^^ k) bot
+listsp (inf A B) = inf (listsp A) (listsp B)
+m < nat z \<longleftrightarrow> int m < z
+m \<le> n \<Longrightarrow> m - n = 0
+map_of xs = map_of ys
+map_option f \<circ> empty = empty
+min top (x::'a::order_top) = x
+mono f \<Longrightarrow> mono_on A f
+m|`A|`B = m|`(A\<inter>B)
+n > 0 \<Longrightarrow> Suc (n - Suc 0) = n
+nat (Int.Pos k) = nat_of_num k
+prefix xs ys \<Longrightarrow> sublist xs ys
+r\<^sup>+ = r \<union> r\<^sup>+ O r
+r``{a} = {b. (a, b) \<in> r}
+s = t \<Longrightarrow> t = s
+set(minus_list_set xs ys) = set xs - set ys
+snd (prod.swap x) = fst x
+sort [m..<n] = [m..<n]
+sum f (A - B) = sum f A - sum f B
+surj f \<Longrightarrow> f ` (f -` A) = A
+symp_on A R\<inverse>\<inverse> = symp_on A R
+x = (y, z) \<Longrightarrow> fst x = y
+z \<le> 0 \<Longrightarrow> nat z = 0
+{(a,b). P} = (if P then UNIV else {})
+{0..Suc n} = insert 0 (Suc ` {0..n})
+{Suc 0..<n} = {..<n} - {0}
+{Suc 0..n} = {..n} - {0}
+{l..<u+1} = {l..(u::int)}

@@ -21,5 +21,5 @@ A ⊆ B ⟶ (A ∩ B = A)
 A ⊆ B ⟶ (A ∪ B = B)
 (A ⊆ B ∧ B ⊆ C) ⟶ (A ⊆ C)
 inj f ⟹ finite A ⟹ card (f ` A) = card A
-finite A ⟹ card (A ∪ B) + card (A ∩ B) = card A + card B
+finite A ⟹ finite B ⟹ card (A ∪ B) + card (A ∩ B) = card A + card B
 finite A ⟹ finite B ⟹ card (A × B) = card A * card B

@@ -1,0 +1,4 @@
+finite A ⟹ card {x∈A. P x ∧ Q x} + card {x∈A. P x ∧ ¬ Q x} = card {x∈A. P x}
+finite A ⟹ card {x∈A. P x} + card {x∈A. ¬ P x} = card A
+finite A ⟹ finite B ⟹ card (A × B - C) = card (A × B) - card (C ∩ (A × B))
+finite A ⟹ finite B ⟹ card { (x,y)∈A×B. P x ∧ Q y } ≤ card A * card B

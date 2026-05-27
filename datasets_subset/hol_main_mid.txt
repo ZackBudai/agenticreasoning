@@ -1,0 +1,100 @@
+(A \<inter> B) \<times> C = A \<times> C \<inter> B \<times> C
+(LIM x F. f x :> at_top) \<longleftrightarrow> (\<forall>Z. eventually (\<lambda>x. Z < f x) F)
+(\<And>P. eventually P F' \<Longrightarrow> eventually P F) \<Longrightarrow> F \<le> F'
+(\<And>a. a \<in> A \<Longrightarrow> (a, a) \<notin> r) \<Longrightarrow> irrefl_on A r
+(\<And>n. f n = g n) \<Longrightarrow> f sums c \<longleftrightarrow> g sums c
+(\<And>x y. R x y \<Longrightarrow> f x < f y) \<Longrightarrow> wfp R
+(\<And>x. P (f x) = Q x) \<Longrightarrow> f -` (Collect P) = Collect Q
+(\<Sum>k\<le>m. (2 * m + 1 choose k)) = 2 ^ (2 * m)
+(\<lambda>n. if n \<in> A then f n else g n) sums S'
+(\<lambda>x y. (x, y) \<in> R) \<le> (\<lambda>x y. (x, y) \<in> S) \<longleftrightarrow> R \<subseteq> S
+(a::'a::cancel_comm_monoid_add) + b = a \<longleftrightarrow> b = 0
+(a::'a::group_add) + b = 0 \<Longrightarrow> - a = b
+(a::'a::normalization_semidom) div unit_factor a = normalize a
+(a::'a::ordered_ab_group_add) < - b \<longleftrightarrow> b < - a
+(a::'a::semiring_gcd) dvd gcd b c \<Longrightarrow> a dvd c
+(a::'a::semiring_modulo) - a mod b = b * (a div b)
+(a::'a::semiring_no_zero_divisors) * b = 0 \<longleftrightarrow> a = 0 \<or> b = 0
+(f :: 'a \<Rightarrow> 'b) = g \<Longrightarrow> f x = g x
+(filter P xs = []) = (\<forall>x\<in>set xs. \<not> P x)
+(i::'a::linordered_semidom) + k \<le> n \<Longrightarrow> n \<le> j + k \<Longrightarrow> n - k \<le> j
+(if P then if Q then x else y else y) = (if P \<and> Q then x else y)
+(inf r (\<noteq>))\<^sup>*\<^sup>* = r\<^sup>*\<^sup>*
+(k::'a::semiring_gcd_mult_normalize) * lcm a b = lcm (k * a) (k * b) * unit_factor k
+(x, y) \<in> f <*mlex*> R \<longleftrightarrow> f x < f y \<or> f x = f y \<and> (x, y) \<in> R
+(x, y) \<in> inv_image r f \<longleftrightarrow> (f x, f y) \<in> r
+(x::'a::preorder) < y \<Longrightarrow> (\<not> y < x) \<longleftrightarrow> True
+(y::'a::semilattice_inf) \<le> x \<Longrightarrow> x \<sqinter> y = y
+0 < (a::'a::ordered_cancel_comm_monoid_add) \<Longrightarrow> b \<le> c \<Longrightarrow> b < a + c
+A = B \<longleftrightarrow> A \<subseteq> B \<and> B \<subseteq> A
+A \<subseteq> B \<Longrightarrow> x \<in> A \<longrightarrow> x \<in> B
+A \<times> insert y B = (\<lambda>x. (x, y)) ` A \<union> A \<times> B
+Collect P = {} \<longleftrightarrow> (\<forall>x. \<not> P x)
+Domain (A \<inter> B) \<subseteq> Domain A \<inter> Domain B
+Field (insert (a, b) r) = {a, b} \<union> Field r
+P \<le> Q \<Longrightarrow> P x y \<Longrightarrow> Q x y
+Suc (card {k. Suc k \<in> M \<and> k < i}) = card {k \<in> M. k < Suc i}
+\<And>x. x \<in> N \<Longrightarrow> f x = g x
+\<exists>(b::'a::linear_continuum). a < b \<or> b < a
+\<exists>(x::'a::linorder). x \<noteq> y \<and> P
+\<forall>x. (x, x) \<notin> r\<^sup>+ \<Longrightarrow> (x, y) \<in> r \<Longrightarrow> x \<noteq> y
+\<lbrakk>(l::'a::linorder) \<le> m; m \<le> u\<rbrakk> \<Longrightarrow> {l..m} \<union> {m<..u} = {l..u}
+\<lbrakk>\<exists>\<^sub>\<le>\<^sub>1x. P x; P a\<rbrakk> \<Longrightarrow> (THE x. P x) = a
+\<not> (n::'a::canonically_ordered_monoid_add) < 0
+\<not> P x \<Longrightarrow> takeWhile P (xs @ (x#l)) = takeWhile P xs
+\<top> \<le> (a::'a::order_top) \<longleftrightarrow> a = \<top>
+a \<circ> b = c \<circ> d \<Longrightarrow> a (b v) = c (d v)
+acyclic (insert (y, x) r) \<longleftrightarrow> acyclic r \<and> (x, y) \<notin> r\<^sup>*
+antisymp_on A (\<lambda>x y. (x, y) \<in> r) \<longleftrightarrow> antisym_on A r
+bij_betw f A A' \<Longrightarrow> a' \<in> A' \<Longrightarrow> f (inv_into A f a') = a'
+bij_betw f A B \<Longrightarrow> bij_betw (the_inv_into A f) B A
+c \<in> A \<inter> B \<Longrightarrow> c \<in> B
+card (A - {x}) = (if x \<in> A then card A - 1 else card A)
+coprime ((a::'a::algebraic_semidom) * c) (b * c) \<longleftrightarrow> is_unit c \<and> coprime a b
+coprime 0 (a::'a::algebraic_semidom) \<longleftrightarrow> is_unit a
+disjnt (insert a X) Y \<longleftrightarrow> a \<notin> Y \<and> disjnt X Y
+distinct xs \<Longrightarrow> distinct (minus_list_set xs ys)
+distinct xs \<Longrightarrow> distinct ys \<Longrightarrow> distinct (List.product xs ys)
+drop n xs = [] \<longleftrightarrow> length xs \<le> n
+equiv A r \<Longrightarrow> equiv (lists A) (listrel r)
+eventually (\<lambda>x::'a::{no_bot, linorder}. x \<noteq> c) at_bot
+f -` (f ` A) = {y. \<exists>x\<in>A. f x = f y}
+f x = None \<Longrightarrow> dom f - insert x A = dom f - A
+finite A \<longleftrightarrow> (\<exists>n f. A = f ` {i::nat. i < n})
+foldl g a (map f xs) = foldl (\<lambda>a x. g a (f x)) a xs
+foldr f xs a = foldl (\<lambda>x y. f y x) a (rev xs)
+i \<le> j \<Longrightarrow> j \<le> k \<Longrightarrow> [i..k] = [i..j-1] @ [j..k]
+inj f \<Longrightarrow> (map f xs = map f ys) = (xs = ys)
+inj f \<Longrightarrow> filtermap f F = filtermap f G \<longleftrightarrow> F = G
+inj_on f (insert a A) \<longleftrightarrow> inj_on f A \<and> f a \<notin> f ` (A - {a})
+inj_on f A \<Longrightarrow> f x = y \<Longrightarrow> x \<in> A \<Longrightarrow> the_inv_into A f y = x
+irrefl_on B r \<Longrightarrow> A \<subseteq> B \<Longrightarrow> irrefl_on A r
+j - k \<le> i \<longleftrightarrow> j \<le> i + k
+k \<le> m \<Longrightarrow> k \<le> n \<Longrightarrow> m - k \<le> n - k \<longleftrightarrow> m \<le> n
+left_unique A \<Longrightarrow> left_unique (rel_set A)
+length (transpose xs) = (if xs = [] then 0 else length (xs ! 0))
+m \<ge> n \<Longrightarrow> gcd (m - n) n = gcd m n
+m \<noteq> n \<longleftrightarrow> m < n \<or> n < m
+map_filter_on X f F = Abs_filter (\<lambda>P. eventually (\<lambda>x. P (f x) \<and> x \<in> X) F)
+mono Q \<Longrightarrow> mono (\<lambda>i x. Q i (f x))
+n < length xs \<Longrightarrow> (map f xs)!n = f(xs!n)
+n < length xs \<Longrightarrow> take n xs @ [hd (drop n xs)] = take (Suc n) xs
+n \<le> m \<Longrightarrow> Suc m - n = Suc (m - n)
+nat x \<le> n \<longleftrightarrow> x \<le> int n
+nat_of_natural (max k l) = max (nat_of_natural k) (nat_of_natural l)
+p \<in> R\<^sup>* \<Longrightarrow> \<exists>n. p \<in> R ^^ n
+prefix xs (ys @ [y]) \<longleftrightarrow> xs = ys @ [y] \<or> prefix xs ys
+prefix xs ys \<Longrightarrow> set xs \<subseteq> set ys
+r \<le> s \<Longrightarrow> antisymp s \<Longrightarrow> antisymp r
+r `` s = {y. \<exists>x\<in>s. (x, y) \<in> r}
+rel_set (eq_onp P) = eq_onp (\<lambda>A. Ball A P)
+replicate (length (filter (\<lambda>y. x = y) xs)) x = filter (\<lambda>y. x = y) xs
+size_list f (map g xs) = size_list (f \<circ> g) xs
+strict_antimono_on S f \<longleftrightarrow> antimono_on S f \<and> inj_on f S
+subseq (zs @ xs) (zs @ ys) \<longleftrightarrow> subseq xs ys
+totalp_on A R \<Longrightarrow> totalp_on A (tranclp R)
+totalp_on A R\<inverse>\<inverse> = totalp_on A R
+x \<notin> set xs \<Longrightarrow> (f(xs[\<mapsto>]ys)) x = f x
+xs \<in> set (suffixes ys) \<longleftrightarrow> suffix xs ys
+y < x \<Longrightarrow> Sup {y..<x::'a::{conditionally_complete_linorder, dense_linorder}} = x
+zs \<in> shuffles xs ys \<Longrightarrow> z # zs \<in> shuffles (z # xs) ys

@@ -1,0 +1,50 @@
+rev (rev xs) = xs
+drop (length xs) (xs @ ys) = ys
+map (f ∘ g) xs = map f (map g xs)
+length (xs @ ys) = length xs + length ys
+(∀x. P x ⟶ Q) ⟶ ((∃x. P x) ⟶ Q)
+length (take n xs) ≤ n
+(∀x. P x ⟶ R) ⟶ ((∃x. P x) ⟶ R)
+(∀x∈A. P x ∧ Q x) ⟷ ((∀x∈A. P x) ∧ (∀x∈A. Q x))
+concat (map (λx. [x]) xs) = xs
+A ⊆ B ⟶ (A ∩ B = A)
+drop n (drop m xs) = drop (n+m) xs
+(P ⟶ Q) ⟷ (¬ P ∨ Q)
+(P ∧ (Q ∨ R)) ⟶ ((P ∧ Q) ∨ (P ∧ R))
+(∃x. P x) ⟶ (∃y. P y ∧ ∃z. P z)
+n ≤ m ⟶ n ≤ m + k
+(P ⟶ (Q ⟶ R)) ⟷ ((P ∧ Q) ⟶ R)
+n ≤ m ⟶ n ≤ m * k + m
+(A - B) ∪ (A ∩ B) = A
+(∀x. P x) ⟶ (∀y. P y)
+abs (a*b) = abs a * abs b
+finite A ⟹ card (insert a A) = (if a∈A then card A else Suc (card A))
+n ≤ m ⟶ m - n + n = m
+inj f ⟹ finite A ⟹ card (f ` A) = card A
+(A ⊆ B ∧ B ⊆ C) ⟶ (A ⊆ C)
+((P ⟶ Q) ∧ (Q ⟶ R)) ⟶ (P ⟶ R)
+(a::int) * (b + c) = a*b + a*c
+finite A ⟹ finite B ⟹ card (A × B) = card A * card B
+finite A ⟹ finite B ⟹ (A ⊆ B ⟶ card A ≤ card B)
+(a::nat) ≤ b ⟶ a + c ≤ b + c
+finite A ⟹ card (Pow A) = 2 ^ card A
+fst (a,b) = a
+r ⊆ s ⟹ rtrancl r ⊆ rtrancl s
+A ⊆ f -` (f ` A)
+(a::nat) ≤ b ⟶ a div c ≤ b div c ∨ c=0
+a ≤ b ⟶ a * c ≤ b * c
+A ⊆ B ⟶ (A ∪ B = B)
+the (Some x) = x
+(Id O r) = r
+snd (a,b) = b
+case_sum f g (Inr y) = g y
+(r O Id) = r
+(f ` (A ∩ B)) ⊆ (f ` A ∩ f ` B)
+map_sum f g (Inr y) = Inr (g y)
+take (length xs) xs = xs
+map_option f None = None
+rev (xs @ ys) = rev ys @ rev xs
+Range (r O s) = Range r ∩ (r `` (Range s))
+trancl (r ∪ s) = trancl (trancl r ∪ trancl s)
+¬ (∀x∈A. P x) ⟷ (∃x∈A. ¬ P x)
+take (length xs) (xs @ ys) = xs

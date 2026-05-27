@@ -41,3 +41,29 @@ Thumbs.db
 solution/datasets/isar_pairs_*.jsonl
 solution/datasets/isar_priors.json
 solution/datasets/isar_hintlex.json
+
+# F27 HOL-corpus knowledge tables (regenerable via planner.extract_hol — see REPORT_SWEEP_RUNBOOK.md)
+solution/datasets/hol_corpus.jsonl
+solution/datasets/known_names.json
+solution/datasets/isar_priors_hol.json
+solution/datasets/isar_hintlex_hol.json
+
+# Per-run sweep outputs (regenerable; partial / killed runs included)
+report_metric_sweep_*/
+planner_comparison_*/
+planner_comparison/_logs/
+planner_comparison/summary.*
+
+# Per-run experiment CSVs (regenerable via planner.experiments bench)
+solution/datasets/planner_results/
+baseline/datasets/planner_results/
+
+# Cached ML model weights (regenerable via train_reranker / train_premises)
+solution/models/
+baseline/models/
+
+# Top-level run logs (noisy, regenerable)
+report_metric_sweep_run.log
+planner_comparison_run.log
+lifted_smoke.log
+solution/report_metric_sweep_run.log

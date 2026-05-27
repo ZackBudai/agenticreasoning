@@ -23,17 +23,23 @@ def _clamp_line_index(lines: List[str], idx: int) -> int:
 def _run_theory_with_timeout(isabelle, session: str, thy: List[str], *, timeout_s: Optional[int]) -> List:
     if not timeout_s or timeout_s <= 0:
         return run_theory(isabelle, session, thy)
-    with ThreadPoolExecutor(max_workers=1) as ex:
-        fut = ex.submit(run_theory, isabelle, session, thy)
-        try:
-            return fut.result(timeout=timeout_s)
-        except _FuturesTimeout:
-            if hasattr(isabelle, "interrupt"):
-                try:
-                    isabelle.interrupt()
-                except Exception:
-                    pass
-            raise TimeoutError("isabelle_run_timeout")
+    ex = ThreadPoolExecutor(max_workers=1, thread_name_prefix="isa")
+    fut = ex.submit(run_theory, isabelle, session, thy)
+    try:
+        result = fut.result(timeout=timeout_s)
+        ex.shutdown(wait=True)
+        return result
+    except _FuturesTimeout:
+        if hasattr(isabelle, "interrupt"):
+            try:
+                isabelle.interrupt()
+            except Exception:
+                pass
+        ex.shutdown(wait=False)
+        raise TimeoutError("isabelle_run_timeout")
+    except BaseException:
+        ex.shutdown(wait=False)
+        raise
 
 def _earliest_failure_anchor(isabelle, session: str, full_text: str, *, default_line_0: int) -> Tuple[int, str]:
     try:

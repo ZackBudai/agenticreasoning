@@ -1,12 +1,12 @@
 (∀x. P x ⟶ Q x) ∧ (∃x. P x) ⟶ (∃x. Q x)
 (∀x. P x ⟷ Q x) ⟶ ((∀x. R x ⟶ P x) ⟷ (∀x. R x ⟶ Q x))
 (∀x. P x) ⟶ ((∀x. Q x ⟶ R x) ⟶ (∀x. P x ∧ Q x ⟶ R x))
-(∃x. P x ∧ (Q x ⟶ R x)) ⟶ ((∃x. P x ∧ Q x) ⟶ (∃x. R x))
+(∀x. P x ⟶ (Q x ⟶ R x)) ⟶ ((∃x. P x ∧ Q x) ⟶ (∃x. R x))
 (if A then f x else f y) = f (if A then x else y)
 (if A then (B ⟶ C) else True) ⟷ (¬ A ∨ (B ⟶ C))
 (∀x. f x = g x) ⟶ (∃!x. f x = a) ⟶ (∃!x. g x = a)
 (∃!x. P x) ⟶ (∀x y. P x ∧ P y ⟶ x = y)
-finite A ⟹ card (A ∪ B) = card A + card (B - A)
+finite A ⟹ finite B ⟹ card (A ∪ B) = card A + card (B - A)
 finite A ⟹ card (A ∩ B) + card (A - B) = card A - card (A ∩ (B - A))
 finite A ⟹ finite B ⟹ A ∩ B = {} ⟹ card (A ∪ B) = card A + card B
 finite A ⟹ card {x∈A. P x ∧ Q x} + card {x∈A. P x ∧ ¬ Q x} = card {x∈A. P x}

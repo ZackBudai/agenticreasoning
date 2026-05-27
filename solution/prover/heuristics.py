@@ -59,10 +59,30 @@ from typing import Optional  # re-affirm for older type checkers
 def suggest_common_lemmas(state_hint: str) -> List[str]:
     txt = (state_hint or "").lower()
     lemmas: List[str] = []
+    # list lemmas (existing)
     if "rev" in txt: lemmas.append("rev_rev_ident")
     if "append" in txt or " @ " in txt: lemmas.append("append_assoc")
     if "length" in txt and ("append" in txt or " @ " in txt): lemmas.append("length_append")
     if "map" in txt and ("append" in txt or " @ " in txt): lemmas.append("map_append")
+    # F20: card / sum / finite-set domain hints. These are the load-bearing
+    # lemmas for hard_25 goals 9-13, 16-18, 21, 25 (the F14-residual family).
+    # Beam-search prover and Fill use these as candidate finisher seeds via
+    # mk_finisher_variants and augment_with_facts_for_finishers.
+    if "card" in txt:
+        lemmas += [
+            "card_Un_disjoint", "card_Un_Int", "card_Diff_subset", "card_image",
+            "card_mono", "card_insert_if", "card_Diff_singleton",
+            "card_cartesian_product",
+        ]
+    if "sum" in txt and "card" in txt:
+        lemmas += ["sum_eq_card_Int"]
+    if "sum" in txt:
+        lemmas += ["sum.distrib", "sum.cong", "sum.neutral", "sum_constant",
+                  "sum.If_cases"]
+    if "inj_on" in txt:
+        lemmas += ["card_image", "inj_on_iff_eq_card"]
+    if "finite" in txt:
+        lemmas += ["finite_Collect_conjI", "finite_Diff", "finite_Un"]
     out, seen = [], set()
     for l in lemmas:
         if l not in seen:

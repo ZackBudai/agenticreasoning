@@ -1,0 +1,8 @@
+(\<lambda>x::'a::monoid_mult. x) = (*) 1
+(a::'a::group_add) + (b - c) = (a + b) - c
+(a::'a::semiring_modulo) mod b = 0
+(x::'a::order) \<le> y \<or> y \<le> x
+- ((a::'a::ab_group_add) + b) = - a + - b
+- (a::'a::idom_divide) div b = - (a div b)
+\<not> (x::'a::preorder) < x
+min (x::'a::order_top) top = x

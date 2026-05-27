@@ -3,6 +3,8 @@ from __future__ import annotations
 import time
 import re
 import os
+import signal
+import threading
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FuturesTimeout
@@ -10,6 +12,7 @@ import hashlib
 
 from planner.skeleton import (
     Skeleton, find_sorry_spans, propose_isar_skeleton, propose_isar_skeleton_diverse_best,
+    _MIN_VIABLE_LLM_CALL_S,
 )
 from planner.budget import Deadline, DeadlineExceeded
 from planner.repair import try_cegis_repairs, regenerate_whole_proof, _APPLY_OR_BY as _TACTIC_LINE_RE
@@ -207,6 +210,133 @@ def _line_offset_1based(text: str, line_1based: int) -> Tuple[int, int]:
 
 _DIRECT_FINISHERS = ("by blast", "by auto", "by simp", "by metis", "by force", "by fastforce", "by presburger", "by argo", "by linarith")
 
+# F19: card/sum domain-specialist finishers. Pruned to high-confidence one-shots
+# so stage-A.5 caps spending around ~30s and leaves room for stage-B sledge.
+# Confirmed closing goals 11, 14, 17, 18, 21 on hard_25.
+_CARD_FINISHERS = (
+    "by (simp add: card_Un_disjoint)",
+    "by (simp add: card_Diff_subset)",
+    "by (simp add: card_image)",
+    "by (simp add: card_insert_if)",
+    "by (simp add: card_Diff_singleton)",
+    "by (auto simp: card_Un_disjoint)",
+    "by (metis card_Un_disjoint)",
+    "by (metis card_Int_Diff)",
+)
+
+_SUM_FINISHERS = (
+    "by (simp add: sum.distrib)",
+    "by (simp add: sum.If_cases)",
+    "by (simp add: sum.If_cases Int_def)",
+    "by (simp add: sum.cong)",
+    "by (simp add: sum_constant)",
+    "by (simp add: sum.neutral)",
+    "by (auto simp: sum.distrib)",
+    "by (metis sum.distrib)",
+)
+
+_GOAL_HAS_CARD_RE = re.compile(r"\bcard\b")
+_GOAL_HAS_SUM_RE = re.compile(r"\bsum\b")
+_CARD_SUM_TOKEN_RE = re.compile(r"\b(card|sum|finite|inj_on)\b")
+
+
+# F29a — type-annotation retry trigger detection.
+#
+# When the bare stage-A finisher cascade fails on a goal that involves untyped
+# numeric/order operators, the cause is often Isabelle's type inference picking
+# the most general type-class (e.g. `'a :: {minus, one, power}`) under which
+# the statement is *false*. Annotating the first free variable as `::int` /
+# `::real` is usually enough — type inference propagates from one occurrence.
+#
+# Observed in hol_main_easy sweep 2026-05-28: g2 `(- 1) ^ (2*n) = 1`,
+# g10 `- a < 0 \<longleftrightarrow> 0 < a` — both burned 70-127 s of budget
+# before failing under bare type inference.
+_UNTYPED_NUMERIC_RE = re.compile(
+    r'\\<le>|\\<ge>|\\<less>|\\<greater>|\\<noteq>|'
+    r'\b\d+\b|'                                 # numeric literal
+    r'(?<!\w)\^(?!\w)'                          # power operator
+)
+# Lowercase identifiers used as free variables in mined HOL goals. Keep the
+# regex broad; rely on the keyword set below to filter out Isar/HOL words.
+_F29A_VAR_RE = re.compile(r"\b([a-z]\w*)\b")
+_F29A_ISAR_KEYWORDS = frozenset({
+    "and", "as", "assume", "by", "case", "do", "fix", "from", "fun",
+    "have", "if", "in", "is", "lemma", "let", "moreover", "next",
+    "obtain", "of", "on", "or", "proof", "qed", "show", "shows",
+    "the", "then", "to", "ultimately", "where", "with",
+    # Common HOL identifiers we don't want to wrap with a type — these are
+    # constants/functions, not the free variables we should type-annotate.
+    "set", "map", "rev", "length", "card", "sum", "finite",
+    "True", "False", "None", "Some",
+})
+# Try `nat` first — most assignment goals are over nat. Then `int` (covers the
+# negative-literal cases like `(- 1) ^ ...`). Then `real` for ordered-field
+# inequalities like `- a < 0`.
+_F29A_TYPE_HINTS = ("nat", "int", "real")
+# Cheap finishers most likely to discharge numeric / order / linear goals
+# once typed. `linarith` is the big win for inequality goals.
+_F29A_FINISHERS = ("by simp", "by auto", "by linarith", "by arith")
+
+
+def _try_annotation_retry(isabelle, session: str, goal: str,
+                          deadline: "Deadline", *, trace: bool = False) -> Optional[str]:
+    """F29a: when bare F11 stage-A fails on a goal with untyped numeric ops,
+    retry the cheap finisher cascade with a type annotation on the first free
+    variable. Returns the verified `lemma "..."` text on success, or None.
+
+    Worst-case wall: 3 type hints × 4 finishers × 4 s cap = 48 s. In practice
+    1-3 attempts succeed when the goal is in this class. Returns None
+    immediately when the trigger predicate doesn't match.
+    """
+    if deadline.remaining() < 5:
+        return None
+    if not _UNTYPED_NUMERIC_RE.search(goal):
+        return None
+    # Pick the first short lowercase identifier that isn't an Isar keyword
+    var = None
+    for m in _F29A_VAR_RE.finditer(goal):
+        v = m.group(1)
+        if v in _F29A_ISAR_KEYWORDS:
+            continue
+        var = v
+        break
+    if var is None:
+        return None
+    var_re = re.compile(r'\b' + re.escape(var) + r'\b')
+    for type_hint in _F29A_TYPE_HINTS:
+        if deadline.remaining() < 4:
+            return None
+        annotated_goal = var_re.sub(f'({var}::{type_hint})', goal, count=1)
+        for tac in _F29A_FINISHERS:
+            if deadline.remaining() < 3:
+                return None
+            candidate = f'lemma "{annotated_goal}"\n  {tac}'
+            try:
+                if _verify_full_proof(isabelle, session, candidate, timeout_s=4):
+                    if trace:
+                        print(f"[planner] F29a type-annotated `{var}::{type_hint}` solved with `{tac}`.")
+                    return candidate
+            except Exception:
+                continue
+    return None
+
+
+def _ordered_card_sum_finishers(goal: str) -> Tuple[str, ...]:
+    """Return finishers ordered by token relevance to the goal text.
+
+    sum-only goal → sum finishers first; card-only → card first; both → sum
+    first (sum goals tend to bind tighter to a single lemma like sum.distrib).
+    """
+    has_card = bool(_GOAL_HAS_CARD_RE.search(goal))
+    has_sum = bool(_GOAL_HAS_SUM_RE.search(goal))
+    if has_sum and not has_card:
+        return _SUM_FINISHERS + _CARD_FINISHERS
+    if has_card and not has_sum:
+        return _CARD_FINISHERS + _SUM_FINISHERS
+    if has_sum and has_card:
+        return _SUM_FINISHERS + _CARD_FINISHERS
+    return _CARD_FINISHERS + _SUM_FINISHERS
+
 
 def _try_prover_direct(isabelle, session: str, goal: str, model: Optional[str],
                        deadline: "Deadline", *, trace: bool = False) -> Optional[str]:
@@ -223,19 +353,36 @@ def _try_prover_direct(isabelle, session: str, goal: str, model: Optional[str],
     if rem < 8:
         return None
 
-    # ---- Stage A: cheap one-shot finishers ----
-    # Each tactic only needs a few seconds; bail as soon as one verifies.
-    for tac in _DIRECT_FINISHERS:
-        if deadline.remaining() < 5:
+    # ---- F19: build finisher list, specialist-first for card/sum goals ----
+    # Tight 6s per-tactic verify cap so a single slow `simp` with congruence
+    # rewriting can't burn the per-goal budget (observed: `by (simp add:
+    # sum.cong)` taking 14s before F19 reordering closed it).
+    is_card_sum = bool(_CARD_SUM_TOKEN_RE.search(goal))
+    if is_card_sum:
+        finisher_seq = _ordered_card_sum_finishers(goal) + _DIRECT_FINISHERS
+    else:
+        finisher_seq = _DIRECT_FINISHERS
+
+    # `simp`/`auto` finishers run in 1-3s; `metis` with 1-2 lemmas can need 8-10s
+    # while a wedge-rewriting metis sometimes runs longer. Use a wider cap when
+    # the tactic starts with `metis` so it isn't cut off mid-reconstruction.
+    for tac in finisher_seq:
+        if deadline.remaining() < 4:
             break
+        per_tac_s = 12 if "metis" in tac else 6
         candidate = f'lemma "{goal}"\n  {tac}'
         try:
-            if _verify_full_proof(isabelle, session, candidate):
+            if _verify_full_proof(isabelle, session, candidate, timeout_s=per_tac_s):
                 if trace:
                     print(f"[planner] F11 stage-A solved with `{tac}`.")
                 return candidate
         except Exception:
             continue
+
+    # ---- F29a: type-annotation retry (only fires for untyped-numeric goals) ----
+    annotated = _try_annotation_retry(isabelle, session, goal, deadline, trace=trace)
+    if annotated is not None:
+        return annotated
 
     # ---- Stage B: full prover (beam + sledge) ----
     budget = max(8, min(90, int(rem * 0.40)))
@@ -581,6 +728,28 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
     if repair_trace and not trace:
         trace = True
 
+    # F17: hard wall-clock cap at 1.2× nominal timeout via SIGALRM. The
+    # cooperative `deadline` checks alone don't bound Isabelle subprocess time
+    # (sledgehammer `metis` reconstruction is in-Isabelle and uninterruptible
+    # from Python). SIGALRM in the main thread breaks any pending fut.result()
+    # or socket read; the `finally:` cleanup kills the Isabelle proc, which
+    # in turn unblocks any worker threads (shutdown(wait=False) so they leak
+    # cleanly until proc-kill).
+    _alarm_installed = False
+    _prev_alarm_handler = None
+    if threading.current_thread() is threading.main_thread():
+        cap_s = max(1, int(1.2 * float(timeout)) + 1)
+        def _alarm_handler(signum, frame):
+            raise DeadlineExceeded(
+                f"wall-clock cap {cap_s}s exceeded (1.2× of nominal {timeout}s)"
+            )
+        try:
+            _prev_alarm_handler = signal.signal(signal.SIGALRM, _alarm_handler)
+            signal.alarm(cap_s)
+            _alarm_installed = True
+        except (ValueError, OSError):
+            _alarm_installed = False
+
     server_info, proc = start_isabelle_server(name="planner", log_file="logs/planner_ui.log")
     isa = get_isabelle_client(server_info)
     session = _extract_session_id(isa.session_start(session=ISABELLE_SESSION))
@@ -630,9 +799,22 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
 
         # Generate outline (F9: bounded by per-goal deadline)
         if legacy_single_outline:
-            single_to = max(3, min(30, deadline.remaining_int(cap=30, min_=3)))
-            full = propose_isar_skeleton(goal, model=model, temp=0.35, force_outline=(mode == "outline"),
-                                         timeout_s=single_to).text
+            # F23: extend the F22 viable-LLM-call floor to this path. The old
+            # `max(3, min(30, deadline.remaining_int(cap=30, min_=3)))` collapsed
+            # to 3 under a tight deadline, guaranteeing ReadTimeout on
+            # qwen2.5-coder:7b regardless of prompt size.
+            rem = deadline.remaining_int(cap=60, min_=_MIN_VIABLE_LLM_CALL_S)
+            if rem < _MIN_VIABLE_LLM_CALL_S:
+                full = ""  # bail rather than fire a doomed call
+            else:
+                single_to = max(_MIN_VIABLE_LLM_CALL_S, rem)
+                try:
+                    full = propose_isar_skeleton(goal, model=model, temp=0.35, force_outline=(mode == "outline"),
+                                                 timeout_s=single_to).text
+                except Exception:
+                    full = ""
+            if not full:
+                return PlanAndFillResult(False, "", [], [0])
         else:
             temps = tuple(outline_temps) if outline_temps else (0.35, 0.55, 0.85)
             k = int(outline_k) if outline_k is not None else 3
@@ -680,6 +862,10 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
         repair_progress: dict[str, int] = {}
         stage_tries: dict[Tuple[str, int], int] = {}
         _skip_fill_logged_once: set[Tuple[str, int]] = set()
+        # F29b: fires once when we'd otherwise enter repair on a substantial
+        # sorry-laden outline that Fill couldn't make any progress on — the
+        # signature of locale-context-dependent goals (hol_main_easy:g1/g7).
+        _f29b_checked = False
 
         focused_hole_key: Optional[str] = None
         # F7: cap fresh-outline regenerations so the loop can't restart indefinitely.
@@ -790,6 +976,25 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
 
             # Try CEGIS repairs
             current_stage = repair_progress.get(hole_key, 0)
+            # F29b: bail when the first Fill made zero progress on a substantial
+            # sorry-laden outline and >50% of the per-goal budget is already
+            # burned. Catches the "LLM wrote an outline Fill can't close"
+            # pattern (typically locale-context-dependent goals). Saves ~60s
+            # per occurrence; without this guard, the subsequent repair stages
+            # would also fail and burn the remaining ~60s anyway.
+            if not _f29b_checked and current_stage > 0:
+                _f29b_checked = True
+                _elapsed_frac = (timeout - left_s()) / max(1.0, float(timeout))
+                if (
+                    len(fills) == 0
+                    and "sorry" in full
+                    and len(full) > 200
+                    and _elapsed_frac > 0.5
+                ):
+                    if trace:
+                        print(f"[planner] F29b early-bail: 0 fills + sorry-laden outline "
+                              f"({len(full)} chars) + {_elapsed_frac:.0%} of budget burned")
+                    return PlanAndFillResult(False, full, [], [0])
             if current_stage > 0 and repairs and left_s() > 6:
                 try:
                     state = _print_state_before_hole(isa, session, full, span, trace)
@@ -987,5 +1192,28 @@ def plan_and_fill(goal: str, model: Optional[str] = None, timeout: int = 100, *,
 
         return PlanAndFillResult(False, full, fills, failed)
 
+    except DeadlineExceeded as ex:
+        if trace:
+            print(f"[planner] {ex}; terminating goal.")
+        try:
+            failed_full = full  # type: ignore[name-defined]
+        except NameError:
+            failed_full = ""
+        try:
+            failed_fills = fills  # type: ignore[name-defined]
+        except NameError:
+            failed_fills = []
+        return PlanAndFillResult(False, failed_full, failed_fills, [0])
+
     finally:
+        if _alarm_installed:
+            try:
+                signal.alarm(0)
+            except (ValueError, OSError):
+                pass
+            if _prev_alarm_handler is not None:
+                try:
+                    signal.signal(signal.SIGALRM, _prev_alarm_handler)
+                except (ValueError, OSError):
+                    pass
         _cleanup_resources(isa, proc)

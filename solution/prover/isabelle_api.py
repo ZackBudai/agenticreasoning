@@ -235,16 +235,24 @@ def run_theory(
             except Exception:
                 timeout_s = 0
         if timeout_s > 0:
-            # Always enforce a wall-clock timeout (even if native timeouts exist but are ignored).
-            with ThreadPoolExecutor(max_workers=1) as ex:
-                fut = ex.submit(_use_theories_call, isabelle, session_id=session_id, master_dir=tmpdir.name, timeout_s=timeout_s)
-                try:
-                    return fut.result(timeout=timeout_s)
-                except FuturesTimeout:
-                    global _use_timeouts
-                    _use_timeouts += 1
-                    _last_call_timed_out = True
-                    return []
+            # F17: shutdown(wait=False) so a sledgehammer-stuck call can't block
+            # the with-exit. The outer plan_and_fill watchdog kills the proc to
+            # unblock any leaked worker thread.
+            ex = ThreadPoolExecutor(max_workers=1, thread_name_prefix="run_theory")
+            fut = ex.submit(_use_theories_call, isabelle, session_id=session_id, master_dir=tmpdir.name, timeout_s=timeout_s)
+            try:
+                result = fut.result(timeout=timeout_s)
+                ex.shutdown(wait=True)
+                return result
+            except FuturesTimeout:
+                global _use_timeouts
+                _use_timeouts += 1
+                _last_call_timed_out = True
+                ex.shutdown(wait=False)
+                return []
+            except BaseException:
+                ex.shutdown(wait=False)
+                raise
 
         # No timeout requested → direct call
         return list(isabelle.use_theories(theories=["Scratch"], session_id=session_id, master_dir=tmpdir.name))

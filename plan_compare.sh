@@ -29,7 +29,7 @@ case "$GOALS" in
 esac
 [ -f "$GOALS" ] || { echo "goal file not found: $GOALS" >&2; exit 2; }
 
-for which in baseline solution; do
+for which in solution baseline; do
   log="$LOG_DIR/${which}.log"
   echo "── planner.${which} (goal-file=$(basename "$GOALS"), model=$MODEL, timeout=${TIMEOUT}s, k=$K, extra='${EXTRA_FLAGS}') → $log"
   # EXTRA_FLAGS is intentionally unquoted so multi-word values word-split into args.
