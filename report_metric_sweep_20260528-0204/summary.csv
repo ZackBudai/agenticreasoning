@@ -1,0 +1,5 @@
+set,goals,strict
+hol_main_easy,100,75
+hol_main_hard,100,67
+hol_main_mid,100,83
+total,300,225

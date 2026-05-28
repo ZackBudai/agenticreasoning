@@ -1,0 +1,101 @@
+goal,success,elapsed_s,mode,model,outline_chars,fills,failed_holes,had_sorry,verified_ok
+!!k:: 'a::linorder. -lessThan k = atLeast k,True,7.9353,auto,ollama:qwen2.5-coder:7b,61,1,0,False,True
+(1 - x) * (\<Sum>i=m..n. x^i) = x^m - x^Suc n,False,132.1073,auto,ollama:qwen2.5-coder:7b,253,0,0,True,True
+(A \<union> B) - C = (A - C) \<union> (B - C),True,7.3108,auto,ollama:qwen2.5-coder:7b,64,1,0,False,True
+(\<And>x::unit. PROP P x) \<equiv> PROP P (),True,9.1195,auto,ollama:qwen2.5-coder:7b,62,1,0,False,True
+(\<exists>x y. P x y) = (\<exists>y x. P x y),True,7.2470,auto,ollama:qwen2.5-coder:7b,64,1,0,False,True
+(\<lambda>h::'a::mult_zero. 0) = (*) 0,True,9.1879,auto,ollama:qwen2.5-coder:7b,56,1,0,False,True
+(a::'a::group_add) - (b + c) = a - c - b,True,38.1644,auto,ollama:qwen2.5-coder:7b,92,1,0,False,True
+(a::'a::idom_divide) div - b = - (a div b),False,124.9621,auto,ollama:qwen2.5-coder:7b,147,0,0,True,True
+(equivclp r)\<^sup>*\<^sup>* = equivclp r,True,13.2776,auto,ollama:qwen2.5-coder:7b,59,1,0,False,True
+(if True then x else y) = x,True,9.2894,auto,ollama:qwen2.5-coder:7b,45,1,0,False,True
+(if x = y then y else x) = x,True,9.2381,auto,ollama:qwen2.5-coder:7b,46,1,0,False,True
+(map_option f opt = None) = (opt = None),True,7.1362,auto,ollama:qwen2.5-coder:7b,59,1,0,False,True
+(n + m) - n = m,False,125.0367,auto,ollama:qwen2.5-coder:7b,105,0,1,False,False
+(take n xs = []) = (n = 0 \<or> xs = []),True,9.2292,auto,ollama:qwen2.5-coder:7b,58,1,0,False,True
+"(x, x) \<in> R ^^ 0",True,9.3150,auto,ollama:qwen2.5-coder:7b,37,1,0,False,True
+(xs @ ys = []) = (xs = [] \<and> ys = []),True,7.1577,auto,ollama:qwen2.5-coder:7b,60,1,0,False,True
+(xs @ ys = xs @ zs) = (ys = zs),True,7.1932,auto,ollama:qwen2.5-coder:7b,50,1,0,False,True
+0 - (a::'a::group_add) = - a,True,9.2983,auto,ollama:qwen2.5-coder:7b,46,1,0,False,True
+0 \<notin> Suc ` A,True,7.3775,auto,ollama:qwen2.5-coder:7b,37,1,0,False,True
+0 gchoose (Suc k) = 0,True,9.3732,auto,ollama:qwen2.5-coder:7b,39,1,0,False,True
+1 + a + a \<noteq> 0,True,26.0790,auto,ollama:qwen2.5-coder:7b,45,1,0,False,True
+A = B \<Longrightarrow> A \<subseteq> B,True,7.2985,auto,ollama:qwen2.5-coder:7b,58,1,0,False,True
+A \<union> B = fold insert B A,False,97.8934,auto,ollama:qwen2.5-coder:7b,686,0,1,True,True
+Ball (f ` A) g = Ball A (g \<circ> f),True,9.2518,auto,ollama:qwen2.5-coder:7b,55,1,0,False,True
+Ball A P = (A \<subseteq> (Collect P)),True,7.2658,auto,ollama:qwen2.5-coder:7b,57,1,0,False,True
+Ball UNIV P \<longleftrightarrow> All P,True,7.3156,auto,ollama:qwen2.5-coder:7b,58,1,0,False,True
+CARD('a bit1) = Suc (2 * CARD('a::finite)),False,107.2260,auto,ollama:qwen2.5-coder:7b,320,0,1,True,True
+HOL.equal k k \<longleftrightarrow> True,False,127.2768,auto,ollama:qwen2.5-coder:7b,120,0,1,False,False
+Neg m + Neg n = Neg (m + n),False,101.7027,auto,ollama:qwen2.5-coder:7b,244,0,1,True,True
+Range (r\<inverse>) = Domain r,True,7.2372,auto,ollama:qwen2.5-coder:7b,49,1,0,False,True
+UNIV = List.coset [],True,9.2955,auto,ollama:qwen2.5-coder:7b,38,1,0,False,True
+UNIV \<inter> B = B,True,7.3158,auto,ollama:qwen2.5-coder:7b,38,1,0,False,True
+"X = Y \<longleftrightarrow> (x, y) \<in> r",False,96.6840,auto,ollama:qwen2.5-coder:7b,235,0,1,True,True
+\<Sum> {0..<card S} \<le> \<Sum> S,False,130.6147,auto,ollama:qwen2.5-coder:7b,288,0,0,True,True
+\<exists>!x. t = x,True,7.3303,auto,ollama:qwen2.5-coder:7b,37,1,0,False,True
+\<exists>a. b = f a,False,125.0577,auto,ollama:qwen2.5-coder:7b,95,0,0,True,True
+\<exists>n. k = int n,False,124.6077,auto,ollama:qwen2.5-coder:7b,170,0,0,True,True
+"\<exists>x y. p = (x, y)",True,9.2380,auto,ollama:qwen2.5-coder:7b,42,1,0,False,True
+\<forall>X \<in> A//r. univ f X \<in> B,False,107.0065,auto,ollama:qwen2.5-coder:7b,539,0,1,True,True
+\<forall>x y. P x y \<Longrightarrow> P x y,True,7.2970,auto,ollama:qwen2.5-coder:7b,62,1,0,False,True
+\<lambda>x. x \<in> A,False,127.0409,auto,ollama:qwen2.5-coder:7b,113,0,0,True,True
+\<nexists>f. f ` A = Pow A,True,50.1582,auto,ollama:qwen2.5-coder:7b,63,1,0,False,True
+\<not> [] \<parallel> x,False,125.6455,auto,ollama:qwen2.5-coder:7b,114,0,0,True,True
+\<not> finite (UNIV :: num0 set),False,132.9662,auto,ollama:qwen2.5-coder:7b,128,0,0,True,True
+\<top> = (\<lambda>x. x \<in> UNIV),False,126.0418,auto,ollama:qwen2.5-coder:7b,180,0,1,False,False
+a \<ge> 0 \<Longrightarrow> mono ((*) a),False,123.7701,auto,ollama:qwen2.5-coder:7b,226,0,1,True,True
+a \<in> {} \<Longrightarrow> P,True,7.0996,auto,ollama:qwen2.5-coder:7b,49,1,0,False,True
+apfst f (apfst g x) = apfst (f \<circ> g) x,True,38.2326,auto,ollama:qwen2.5-coder:7b,78,1,0,False,True
+"apsnd f (apfst g x) = (g (fst x), f (snd x))",True,9.2238,auto,ollama:qwen2.5-coder:7b,62,1,0,False,True
+asymp_on A r \<Longrightarrow> irreflp_on A r,True,9.2445,auto,ollama:qwen2.5-coder:7b,63,1,0,False,True
+butlast (rev xs) = rev (tl xs),True,9.1786,auto,ollama:qwen2.5-coder:7b,48,1,0,False,True
+card (A <+> B) = card A + card B,False,138.1995,auto,ollama:qwen2.5-coder:7b,431,0,1,True,True
+card {l<..<u} = u - Suc l,True,7.1873,auto,ollama:qwen2.5-coder:7b,67,1,0,False,True
+dom (m ++ n) = dom n \<union> dom m,True,9.2767,auto,ollama:qwen2.5-coder:7b,53,1,0,False,True
+drop n (map f xs) = map f (drop n xs),True,30.6035,auto,ollama:qwen2.5-coder:7b,67,1,0,False,True
+equivclp (conversep r) = equivclp r,True,13.0603,auto,ollama:qwen2.5-coder:7b,53,1,0,False,True
+equivp R \<Longrightarrow> R x x,True,41.3960,auto,ollama:qwen2.5-coder:7b,66,1,0,False,True
+f(x := f x) = f,True,7.1581,auto,ollama:qwen2.5-coder:7b,34,1,0,False,True
+finite (r\<^sup>+) = finite r,True,7.1773,auto,ollama:qwen2.5-coder:7b,71,1,0,False,True
+finite F \<Longrightarrow> finite (h ` F),True,7.1221,auto,ollama:qwen2.5-coder:7b,83,1,0,False,True
+finite {i :: int. a < i \<and> i \<le> b},True,7.0827,auto,ollama:qwen2.5-coder:7b,83,1,0,False,True
+fst (apfst f x) = f (fst x),True,9.1859,auto,ollama:qwen2.5-coder:7b,45,1,0,False,True
+fst bc = (fst \<circ> fstOp P Q) bc,False,137.7141,auto,ollama:qwen2.5-coder:7b,201,0,1,True,True
+i \<le> j \<Longrightarrow> k * i \<le> k * j,True,25.7881,auto,ollama:qwen2.5-coder:7b,70,1,0,False,True
+insert a B = {x. x = a} \<union> B,True,7.1415,auto,ollama:qwen2.5-coder:7b,53,1,0,False,True
+insert x UNIV = UNIV,True,7.2097,auto,ollama:qwen2.5-coder:7b,39,1,0,False,True
+inv (\<lambda>a. a) = (\<lambda>a. a),True,9.3476,auto,ollama:qwen2.5-coder:7b,55,1,0,False,True
+irrefl R \<Longrightarrow> irrefl (lexord R),True,32.4285,auto,ollama:qwen2.5-coder:7b,79,1,0,False,True
+last (xs @ [x]) = x,True,9.1028,auto,ollama:qwen2.5-coder:7b,37,1,0,False,True
+length (rev xs) = length xs,True,9.3102,auto,ollama:qwen2.5-coder:7b,45,1,0,False,True
+length (suffixes xs) = Suc (length xs),False,118.1639,auto,ollama:qwen2.5-coder:7b,844,0,1,True,True
+length (x # xs) = Suc (length xs),True,9.2340,auto,ollama:qwen2.5-coder:7b,51,1,0,False,True
+lfp f = (f ^^ k) bot,False,133.3194,auto,ollama:qwen2.5-coder:7b,321,0,1,True,True
+listsp (inf A B) = inf (listsp A) (listsp B),True,7.2220,auto,ollama:qwen2.5-coder:7b,63,1,0,False,True
+m < nat z \<longleftrightarrow> int m < z,True,9.3721,auto,ollama:qwen2.5-coder:7b,59,1,0,False,True
+m \<le> n \<Longrightarrow> m - n = 0,True,26.0696,auto,ollama:qwen2.5-coder:7b,62,1,0,False,True
+map_of xs = map_of ys,False,126.0822,auto,ollama:qwen2.5-coder:7b,105,0,1,False,False
+map_option f \<circ> empty = empty,False,124.6780,auto,ollama:qwen2.5-coder:7b,143,0,0,True,True
+min top (x::'a::order_top) = x,True,9.2169,auto,ollama:qwen2.5-coder:7b,48,1,0,False,True
+mono f \<Longrightarrow> mono_on A f,True,38.5097,auto,ollama:qwen2.5-coder:7b,74,1,0,False,True
+m|`A|`B = m|`(A\<inter>B),True,9.2203,auto,ollama:qwen2.5-coder:7b,43,1,0,False,True
+n > 0 \<Longrightarrow> Suc (n - Suc 0) = n,True,9.3710,auto,ollama:qwen2.5-coder:7b,61,1,0,False,True
+nat (Int.Pos k) = nat_of_num k,True,58.6486,auto,ollama:qwen2.5-coder:7b,83,1,0,False,True
+prefix xs ys \<Longrightarrow> sublist xs ys,False,73.5112,auto,ollama:qwen2.5-coder:7b,223,0,1,True,True
+r\<^sup>+ = r \<union> r\<^sup>+ O r,True,38.4366,auto,ollama:qwen2.5-coder:7b,71,1,0,False,True
+"r``{a} = {b. (a, b) \<in> r}",True,7.1611,auto,ollama:qwen2.5-coder:7b,47,1,0,False,True
+s = t \<Longrightarrow> t = s,True,7.2708,auto,ollama:qwen2.5-coder:7b,48,1,0,False,True
+set(minus_list_set xs ys) = set xs - set ys,True,9.1781,auto,ollama:qwen2.5-coder:7b,61,1,0,False,True
+snd (prod.swap x) = fst x,True,9.3356,auto,ollama:qwen2.5-coder:7b,43,1,0,False,True
+sort [m..<n] = [m..<n],True,9.3037,auto,ollama:qwen2.5-coder:7b,40,1,0,False,True
+sum f (A - B) = sum f A - sum f B,False,135.1260,auto,ollama:qwen2.5-coder:7b,398,0,0,True,True
+surj f \<Longrightarrow> f ` (f -` A) = A,True,13.3248,auto,ollama:qwen2.5-coder:7b,59,1,0,False,True
+symp_on A R\<inverse>\<inverse> = symp_on A R,True,9.2549,auto,ollama:qwen2.5-coder:7b,63,1,0,False,True
+"x = (y, z) \<Longrightarrow> fst x = y",True,9.1270,auto,ollama:qwen2.5-coder:7b,56,1,0,False,True
+z \<le> 0 \<Longrightarrow> nat z = 0,True,9.3484,auto,ollama:qwen2.5-coder:7b,55,1,0,False,True
+"{(a,b). P} = (if P then UNIV else {})",True,9.1636,auto,ollama:qwen2.5-coder:7b,55,1,0,False,True
+{0..Suc n} = insert 0 (Suc ` {0..n}),True,9.2644,auto,ollama:qwen2.5-coder:7b,54,1,0,False,True
+{Suc 0..<n} = {..<n} - {0},True,9.3164,auto,ollama:qwen2.5-coder:7b,44,1,0,False,True
+{Suc 0..n} = {..n} - {0},True,9.1496,auto,ollama:qwen2.5-coder:7b,42,1,0,False,True
+{l..<u+1} = {l..(u::int)},True,9.2446,auto,ollama:qwen2.5-coder:7b,43,1,0,False,True

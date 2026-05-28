@@ -1,0 +1,101 @@
+goal,success,elapsed_s,mode,model,outline_chars,fills,failed_holes,had_sorry,verified_ok
+((P \<longleftrightarrow> Q) \<longleftrightarrow> R) \<longleftrightarrow> (P \<longleftrightarrow> (Q \<longleftrightarrow> R)),True,5.9878,auto,ollama:qwen2.5-coder:7b,148,1,0,False,True
+((\<lambda>x. if x \<in> B then c else d) -` A) = (if c \<in> A then (if d \<in> A then UNIV else B) else if d \<in> A then - B else {}),True,9.2385,auto,ollama:qwen2.5-coder:7b,154,1,0,False,True
+"(A, B) \<in> max_ext R \<Longrightarrow> (C, D) \<in> max_ext R \<Longrightarrow> (A \<union> C, B \<union> D) \<in> max_ext R",True,38.9313,auto,ollama:qwen2.5-coder:7b,168,1,0,False,True
+(LIM x F1. f x :> F2) \<longleftrightarrow> (\<forall>P. eventually P F2 \<longrightarrow> eventually (\<lambda>x. P (f x)) F1),False,113.6788,auto,ollama:qwen2.5-coder:7b,393,0,1,True,True
+(\<And>a b. x a b \<longrightarrow> y a b) \<Longrightarrow> x\<^sup>*\<^sup>* a b \<longrightarrow> y\<^sup>*\<^sup>* a b,True,38.4129,auto,ollama:qwen2.5-coder:7b,157,1,0,False,True
+(\<And>fa y. fa \<in> range f \<Longrightarrow> y \<in> range fa \<Longrightarrow> P y) \<equiv> (\<And>x xa. P (f x xa)),False,109.6707,auto,ollama:qwen2.5-coder:7b,321,0,1,True,True
+"(\<And>x y. (x, y) \<in> r \<Longrightarrow> (\<And>z. (x, z) \<in> r \<Longrightarrow> y = z)) \<Longrightarrow> single_valued r",True,37.3565,auto,ollama:qwen2.5-coder:7b,168,1,0,False,True
+(\<And>x y. Grp P id x y \<Longrightarrow> Grp Q id (f x) (f y)) \<equiv> (\<And>x. x \<in> P \<Longrightarrow> f x \<in> Q),False,104.8385,auto,ollama:qwen2.5-coder:7b,358,0,1,True,True
+(\<And>x y. x \<in> A \<Longrightarrow> y \<in> A \<Longrightarrow> R x y \<Longrightarrow> \<not> R y x) \<Longrightarrow> asymp_on A R,True,7.1729,auto,ollama:qwen2.5-coder:7b,155,1,0,False,True
+(\<And>x y. x \<in> set xs \<Longrightarrow> y \<in> set xs \<Longrightarrow> f y \<circ> f x = f x \<circ> f y) \<Longrightarrow> foldr f xs = fold f xs,True,40.8541,auto,ollama:qwen2.5-coder:7b,189,1,0,False,True
+(\<forall>\<^sub>Fx in F. C \<longrightarrow> P x) \<longleftrightarrow> (C \<longrightarrow> (\<forall>\<^sub>Fx in F. P x)),True,9.3107,auto,ollama:qwen2.5-coder:7b,143,1,0,False,True
+(\<forall>x. \<not> P x ) \<Longrightarrow> \<not> trivial_limit net \<Longrightarrow> \<not> eventually (\<lambda>x. P x) net,True,9.2365,auto,ollama:qwen2.5-coder:7b,144,1,0,False,True
+(\<forall>x. if x = a then P x else Q x) \<longleftrightarrow> P a \<and> (\<forall>x. x\<noteq>a \<longrightarrow> Q x),True,9.0214,auto,ollama:qwen2.5-coder:7b,138,1,0,False,True
+"(\<lambda>x y. (x, y) \<in> R) \<sqinter> (\<lambda>x y. (x, y) \<in> S) = (\<lambda>x y. (x, y) \<in> R \<inter> S)",False,79.4391,auto,ollama:qwen2.5-coder:7b,282,0,1,True,True
+(a::'a::linordered_idom) * c < c \<longleftrightarrow> (0 \<le> c \<longrightarrow> a < 1) \<and> (c \<le> 0 \<longrightarrow> 1 < a),True,63.5891,auto,ollama:qwen2.5-coder:7b,182,1,0,False,True
+(a::'a::linordered_ring_strict) * c < b * c \<longleftrightarrow> 0 < c \<and> a < b \<or> c < 0 \<and> b < a,True,63.2695,auto,ollama:qwen2.5-coder:7b,162,1,0,False,True
+(a::'a::order) < f b \<Longrightarrow> (b::'b::order) < c \<Longrightarrow> (!!x y. x < y \<Longrightarrow> f x < f y) \<Longrightarrow> a < f c,True,15.6088,auto,ollama:qwen2.5-coder:7b,163,1,0,False,True
+(a::'a::order) <= b \<Longrightarrow> f b < (c::'c::order) \<Longrightarrow> (!!x y. x <= y \<Longrightarrow> f x <= f y) \<Longrightarrow> f a < c,True,19.3545,auto,ollama:qwen2.5-coder:7b,166,1,0,False,True
+(a::'a::order) <= f b \<Longrightarrow> (b::'b::order) < c \<Longrightarrow> (!!x y. x < y \<Longrightarrow> f x < f y) \<Longrightarrow> a < f c,True,15.5342,auto,ollama:qwen2.5-coder:7b,164,1,0,False,True
+(a::'a::order) <= f b \<Longrightarrow> (b::'b::order) <= c \<Longrightarrow> (!!x y. x <= y \<Longrightarrow> f x <= f y) \<Longrightarrow> a <= f c,True,19.2297,auto,ollama:qwen2.5-coder:7b,168,1,0,False,True
+(a::'a::semilattice_sup) \<le> c \<Longrightarrow> b \<le> d \<Longrightarrow> a \<squnion> b \<le> c \<squnion> d,False,113.2105,auto,ollama:qwen2.5-coder:7b,328,0,1,True,True
+(a::'a::semiring_gcd) dvd d \<and> b dvd d \<and> normalize d = d \<and> (\<forall>e. a dvd e \<and> b dvd e \<longrightarrow> d dvd e) \<longleftrightarrow> d = lcm a b,True,56.8096,auto,ollama:qwen2.5-coder:7b,205,1,0,False,True
+"(case p of (a, b) \<Rightarrow> c a b) \<Longrightarrow> (\<And>x y. p = (x, y) \<Longrightarrow> c x y \<Longrightarrow> Q) \<Longrightarrow> Q",True,7.1932,auto,ollama:qwen2.5-coder:7b,163,1,0,False,True
+(if Q then x else y) = b \<longleftrightarrow> (Q \<longrightarrow> x = b) \<and> (\<not> Q \<longrightarrow> y = b),True,9.3079,auto,ollama:qwen2.5-coder:7b,134,1,0,False,True
+"(insert (a,b) r)\<^sup>* = r\<^sup>* \<union> {(x, y). (x, a) \<in> r\<^sup>* \<and> (b, y) \<in> r\<^sup>*}",True,50.1577,auto,ollama:qwen2.5-coder:7b,144,1,0,False,True
+"(insert (y, x) r)\<^sup>+ = r\<^sup>+ \<union> {(a, b). (a, y) \<in> r\<^sup>* \<and> (x, b) \<in> r\<^sup>*}",True,49.7164,auto,ollama:qwen2.5-coder:7b,144,1,0,False,True
+"(of_int n / of_int m :: 'a :: {division_ring,ring_char_0}) \<in> \<int> \<longleftrightarrow> m = 0 \<or> m dvd n",True,67.6982,auto,ollama:qwen2.5-coder:7b,164,1,0,False,True
+"(x, z) \<in> R ^^ Suc n \<Longrightarrow> (\<And>y. (x, y) \<in> R \<Longrightarrow> (y, z) \<in> R ^^ n \<Longrightarrow> P) \<Longrightarrow> P",True,63.7683,auto,ollama:qwen2.5-coder:7b,180,1,0,False,True
+"(x,y) \<in> r\<^sup>* \<Longrightarrow> (xs, ys) \<in> (listrel1 r)\<^sup>* \<Longrightarrow> (x # xs, y # ys) \<in> (listrel1 r)\<^sup>*",False,123.4845,auto,ollama:qwen2.5-coder:7b,481,0,1,True,True
+(x::'a::bounded_semilattice_sup_bot) \<squnion> y = \<bottom> \<longleftrightarrow> x = \<bottom> \<and> y = \<bottom>,False,84.5433,auto,ollama:qwen2.5-coder:7b,441,0,1,True,True
+(x::'a::semilattice_inf) \<le> a \<sqinter> b \<Longrightarrow> (x \<le> a \<Longrightarrow> x \<le> b \<Longrightarrow> P) \<Longrightarrow> P,False,124.7030,auto,ollama:qwen2.5-coder:7b,482,0,1,False,False
+(xs = [] \<Longrightarrow> P) \<Longrightarrow>(\<And>ys y. xs = ys @ [y] \<Longrightarrow> P) \<Longrightarrow> P,True,38.9345,auto,ollama:qwen2.5-coder:7b,147,1,0,False,True
+(y = None \<Longrightarrow> P) \<Longrightarrow> (\<And>a. y = Some a \<Longrightarrow> P) \<Longrightarrow> P,True,7.1832,auto,ollama:qwen2.5-coder:7b,129,1,0,False,True
+(y = [] \<Longrightarrow> P) \<Longrightarrow> (\<And>a list. y = a # list \<Longrightarrow> P) \<Longrightarrow> P,True,38.7364,auto,ollama:qwen2.5-coder:7b,154,1,0,False,True
+0 \<le> (x::'a::linordered_idom) \<Longrightarrow> 0 \<le> y \<Longrightarrow> y \<le> 1 \<Longrightarrow> y * x \<le> x,True,63.2686,auto,ollama:qwen2.5-coder:7b,165,1,0,False,True
+"A \<subseteq> Collect (case_prod (R \<inverse>\<inverse>)) \<Longrightarrow> (%(x, y). (y, x)) ` A \<subseteq> Collect (case_prod R)",True,13.1362,auto,ollama:qwen2.5-coder:7b,150,1,0,False,True
+A \<subseteq> insert x B \<longleftrightarrow> (if x \<in> A then A - {x} \<subseteq> B else A \<subseteq> B),True,9.1395,auto,ollama:qwen2.5-coder:7b,127,1,0,False,True
+A \<times> B = C \<times> D \<longleftrightarrow> A = C \<and> B = D \<or> (A = {} \<or> B = {}) \<and> (C = {} \<or> D = {}),True,7.1037,auto,ollama:qwen2.5-coder:7b,144,1,0,False,True
+Id \<subseteq> s \<Longrightarrow> (r\<^sup>* \<inter> s) O r \<subseteq> s \<Longrightarrow> r\<^sup>* \<subseteq> s,True,42.7598,auto,ollama:qwen2.5-coder:7b,157,1,0,False,True
+LIM x inf F (principal {x. P x}). f x :> G \<Longrightarrow> LIM x inf F (principal {x. \<not> P x}). g x :> G \<Longrightarrow> LIM x F. if P x then f x else g x :> G,False,120.4341,auto,ollama:qwen2.5-coder:7b,545,0,1,True,True
+Lcm\<^sub>f\<^sub>i\<^sub>n A = 1 \<longleftrightarrow> (\<forall>(a::'a::semiring_gcd)\<in>A. is_unit a) \<and> finite A,False,135.1137,auto,ollama:qwen2.5-coder:7b,573,0,0,True,True
+P (a - b) \<longleftrightarrow> \<not> (a < b \<and> \<not> P 0 \<or> (\<exists>d. a = b + d \<and> \<not> P d)),False,127.5348,auto,ollama:qwen2.5-coder:7b,311,0,1,True,True
+P1 \<longrightarrow> Q1 \<Longrightarrow> P2 \<longrightarrow> Q2 \<Longrightarrow> (P1 \<and> P2) \<longrightarrow> (Q1 \<and> Q2),True,7.1253,auto,ollama:qwen2.5-coder:7b,150,1,0,False,True
+"R O S = Finite_Set.fold (\<lambda>(x,y) A. Finite_Set.fold (\<lambda>(w,z) A'. if y = w then Set.insert (x,z) A' else A') A S) {} R",False,126.1828,auto,ollama:qwen2.5-coder:7b,498,0,1,True,True
+"Set.insert x R O S = Finite_Set.fold (\<lambda>(w,z) A'. if snd x = w then Set.insert (fst x,z) A' else A') (R O S) S",False,133.6484,auto,ollama:qwen2.5-coder:7b,370,0,0,True,True
+X \<noteq> {} \<Longrightarrow> bdd_above X \<Longrightarrow> (y::'a::conditionally_complete_linorder) < Sup X \<longleftrightarrow> (\<exists>x\<in>X. y < x),True,68.2926,auto,ollama:qwen2.5-coder:7b,193,1,0,False,True
+"\<And>p. (\<And>a b. p = (a, b) \<Longrightarrow> z \<in> c a b) \<Longrightarrow> z \<in> (case p of (a, b) \<Rightarrow> c a b)",True,6.9791,auto,ollama:qwen2.5-coder:7b,148,1,0,False,True
+\<bottom> = (x::'a::bounded_semilattice_sup_bot) \<squnion> y \<longleftrightarrow> x = \<bottom> \<and> y = \<bottom>,False,88.1266,auto,ollama:qwen2.5-coder:7b,524,0,1,True,True
+\<forall>x\<in>A. \<forall>y\<in>A. g (f x) = g (f y) \<longleftrightarrow> g x = g y \<Longrightarrow> inj_on f A \<Longrightarrow> inj_on g (f ` A) \<longleftrightarrow> inj_on g A,False,136.2323,auto,ollama:qwen2.5-coder:7b,916,0,1,False,False
+\<lbrakk> P (x::'a::order); \<And>y. P y \<Longrightarrow> x \<ge> y \<rbrakk> \<Longrightarrow> Greatest P = x,True,67.3518,auto,ollama:qwen2.5-coder:7b,154,1,0,False,True
+"\<lbrakk> i < size xs; j < size xs\<rbrakk> \<Longrightarrow> distinct(xs[i := xs!j, j := xs!i]) = distinct xs",True,9.2601,auto,ollama:qwen2.5-coder:7b,128,1,0,False,True
+\<lbrakk> inj_on f (set xs); x \<in> set xs \<rbrakk> \<Longrightarrow> count_list (map f xs) (f x) = count_list xs x,True,78.4092,auto,ollama:qwen2.5-coder:7b,157,1,0,False,True
+"\<lbrakk>(x @ u, x @ v) \<in> lexord r; (\<forall>a. (a,a) \<notin> r) \<rbrakk> \<Longrightarrow> (u,v) \<in> lexord r",True,38.1625,auto,ollama:qwen2.5-coder:7b,160,1,0,False,True
+\<lbrakk>R \<subseteq> B \<times> B\<rbrakk> \<Longrightarrow> relInvImage A R f = Gr A f O R O (Gr A f)\<inverse>,False,127.1819,auto,ollama:qwen2.5-coder:7b,439,0,1,False,False
+\<lbrakk>distinct xs; x \<in> set xs\<rbrakk> \<Longrightarrow> dropWhile (\<lambda>y. y \<noteq> x) (rev xs) = x # rev (takeWhile (\<lambda>y. y \<noteq> x) xs),True,73.7550,auto,ollama:qwen2.5-coder:7b,200,1,0,False,True
+\<lbrakk>l = k; \<And>x. x \<in> set l \<Longrightarrow> P x = Q x\<rbrakk> \<Longrightarrow> takeWhile P l = takeWhile Q k,True,38.5117,auto,ollama:qwen2.5-coder:7b,159,1,0,False,True
+\<lbrakk>x#ys \<in> L; y#zs \<in> L; x \<noteq> y \<rbrakk> \<Longrightarrow> Longest_common_prefix L = [],False,134.5799,auto,ollama:qwen2.5-coder:7b,272,0,1,True,True
+\<not> finite S \<longleftrightarrow> (\<exists>f::nat \<Rightarrow> 'a. inj f \<and> range f \<subseteq> S),True,82.4225,auto,ollama:qwen2.5-coder:7b,159,1,0,False,True
+a = (if Q then x else y) \<longleftrightarrow> (Q \<longrightarrow> a = x) \<and> (\<not> Q \<longrightarrow> a = y),True,9.1863,auto,ollama:qwen2.5-coder:7b,134,1,0,False,True
+a = b \<Longrightarrow> l = k \<Longrightarrow> (\<And>a x. x \<in> set l \<Longrightarrow> f a x = g a x) \<Longrightarrow> foldl f a l = foldl g b k,True,49.1862,auto,ollama:qwen2.5-coder:7b,182,1,0,False,True
+a = f b \<Longrightarrow> b < c \<Longrightarrow> (!!x y. x < y \<Longrightarrow> f x < f y) \<Longrightarrow> a < f c,True,7.0564,auto,ollama:qwen2.5-coder:7b,137,1,0,False,True
+a = f b \<Longrightarrow> b <= c \<Longrightarrow> (!!x y. x <= y \<Longrightarrow> f x <= f y) \<Longrightarrow> a <= f c,True,7.1527,auto,ollama:qwen2.5-coder:7b,141,1,0,False,True
+a dvd d \<and> b dvd d \<and> (\<forall>e. a dvd e \<and> b dvd e \<longrightarrow> d dvd e) \<longleftrightarrow> d = lcm a b,False,129.0908,auto,ollama:qwen2.5-coder:7b,522,0,1,True,True
+antisymp_on A R \<Longrightarrow> x \<in> A \<Longrightarrow> y \<in> A \<Longrightarrow> R x y \<Longrightarrow> R y x \<Longrightarrow> x = y,True,38.3249,auto,ollama:qwen2.5-coder:7b,181,1,0,False,True
+b \<in> range (\<lambda>x. f x) \<Longrightarrow> (\<And>x. b = f x \<Longrightarrow> P) \<Longrightarrow> P,True,7.2307,auto,ollama:qwen2.5-coder:7b,127,1,0,False,True
+card (\<Union>A) = nat (\<Sum>I | I \<subseteq> A \<and> I \<noteq> {}. (- 1) ^ (card I + 1) * int (card (\<Inter>I))),False,130.0841,auto,ollama:qwen2.5-coder:7b,757,0,0,True,True
+card {T. T \<subseteq> S \<and> U \<subseteq> T \<and> even(card T)} = card {T. T \<subseteq> S \<and> U \<subseteq> T \<and> odd(card T)},False,129.9447,auto,ollama:qwen2.5-coder:7b,765,0,0,True,True
+class.linorder (\<lambda>c d. of_char c \<le> (of_char d :: nat)) (\<lambda>c d. of_char c < (of_char d :: nat)),False,139.4335,auto,ollama:qwen2.5-coder:7b,350,0,1,True,True
+d dvd a \<and> d dvd b \<and> (\<forall>e. e dvd a \<and> e dvd b \<longrightarrow> e dvd d) \<longleftrightarrow> d = gcd a b,False,125.3809,auto,ollama:qwen2.5-coder:7b,328,0,1,True,True
+disjoint A \<Longrightarrow> a \<in> A \<Longrightarrow> b \<in> A \<Longrightarrow> a \<noteq> b \<Longrightarrow> a \<inter> b = {},False,137.9446,auto,ollama:qwen2.5-coder:7b,263,0,0,True,True
+distinct xs = (\<forall>i < size xs. \<forall>j < size xs. i \<noteq> j \<longrightarrow> xs!i \<noteq> xs!j),True,64.2483,auto,ollama:qwen2.5-coder:7b,152,1,0,False,True
+distinct_adj (xs @ ys) \<longleftrightarrow> distinct_adj xs \<and> distinct_adj ys \<and> (xs = [] \<or> ys = [] \<or> last xs \<noteq> hd ys),True,67.4390,auto,ollama:qwen2.5-coder:7b,188,1,0,False,True
+dom (\<lambda>x. if P x then f x else g x) = dom f \<inter> {x. P x} \<union> dom g \<inter> {x. \<not> P x},True,49.4393,auto,ollama:qwen2.5-coder:7b,136,1,0,False,True
+"equiv A r \<Longrightarrow> x \<in> A \<Longrightarrow> y \<in> A \<Longrightarrow> r``{x} = r``{y} \<longleftrightarrow> (x, y) \<in> r",True,53.7236,auto,ollama:qwen2.5-coder:7b,176,1,0,False,True
+eventually P (filtercomap f at_top) \<longleftrightarrow> (\<exists>N::'a::linorder. \<forall>x. f x \<ge> N \<longrightarrow> P x),True,66.9389,auto,ollama:qwen2.5-coder:7b,191,1,0,False,True
+finite (A//R) \<Longrightarrow> R \<subseteq> S \<Longrightarrow> equiv A R \<Longrightarrow> equiv A S \<Longrightarrow> finite (A//S),True,82.2761,auto,ollama:qwen2.5-coder:7b,178,1,0,False,True
+finite (UNIV :: 'a set) \<Longrightarrow> finite (UNIV :: 'b set) \<Longrightarrow> finite (UNIV :: ('a \<times> 'b) set),True,82.2507,auto,ollama:qwen2.5-coder:7b,159,1,0,False,True
+finite A \<Longrightarrow> (\<And>M. M \<in> A \<Longrightarrow> finite M) \<Longrightarrow> finite (\<Union>A),True,7.2052,auto,ollama:qwen2.5-coder:7b,153,1,0,False,True
+finite A \<Longrightarrow> \<forall>y\<in>A. eventually (\<lambda>x. P x y) net \<Longrightarrow> eventually (\<lambda>x. \<forall>y\<in>A. P x y) net,False,134.8887,auto,ollama:qwen2.5-coder:7b,720,0,0,True,True
+finite A \<Longrightarrow> finite B \<Longrightarrow> A \<inter> B = {} \<Longrightarrow> card (A \<union> B) = card A + card B,True,7.3764,auto,ollama:qwen2.5-coder:7b,169,1,0,False,True
+finite A \<Longrightarrow> r \<subseteq> A \<times> A \<Longrightarrow> X \<in> A//r \<Longrightarrow> finite X,True,82.0306,auto,ollama:qwen2.5-coder:7b,151,1,0,False,True
+finite X \<Longrightarrow> (x::'a::conditionally_complete_lattice) \<in> X \<Longrightarrow> Inf X \<le> x,False,125.4580,auto,ollama:qwen2.5-coder:7b,399,0,0,True,True
+i \<notin> I \<Longrightarrow> disjoint_family_on A (insert i I) \<longleftrightarrow> A i \<inter> (\<Union>i\<in>I. A i) = {} \<and> disjoint_family_on A I,False,119.4706,auto,ollama:qwen2.5-coder:7b,463,0,1,True,True
+inj_on f A \<Longrightarrow> x \<in> A \<Longrightarrow> y \<in> A \<Longrightarrow> f x = f y \<longleftrightarrow> x = y,True,82.0127,auto,ollama:qwen2.5-coder:7b,158,1,0,False,True
+inj_on f C \<Longrightarrow> A \<subseteq> C \<Longrightarrow> B \<subseteq> C \<Longrightarrow> f ` A = f ` B \<longleftrightarrow> A = B,True,90.4941,auto,ollama:qwen2.5-coder:7b,179,1,0,False,True
+"irrefl_on A r \<longleftrightarrow> (\<forall>(a, b) \<in> r. a \<in> A \<longrightarrow> b \<in> A \<longrightarrow> a \<noteq> b)",False,126.3149,auto,ollama:qwen2.5-coder:7b,670,0,0,True,True
+left_unique Q \<Longrightarrow> (\<And>x y. R x y \<Longrightarrow> Q x y) \<Longrightarrow> left_unique R,True,36.6286,auto,ollama:qwen2.5-coder:7b,153,1,0,False,True
+length xs = length ys \<Longrightarrow> P [] [] \<Longrightarrow> (\<And>x xs y ys. length xs = length ys \<Longrightarrow> P xs ys \<Longrightarrow> P (x#xs) (y#ys)) \<Longrightarrow> P xs ys,False,145.7574,auto,ollama:qwen2.5-coder:7b,774,0,1,True,True
+length xs = length ys \<or> length us = length vs \<Longrightarrow> (xs@us = ys@vs) = (xs=ys \<and> us=vs),True,9.2254,auto,ollama:qwen2.5-coder:7b,124,1,0,False,True
+map_of xs k = Some z \<Longrightarrow> P k z \<Longrightarrow> map_of (filter (case_prod P) xs) k = Some z,True,37.1680,auto,ollama:qwen2.5-coder:7b,144,1,0,False,True
+minus_list_mset (x#xs) ys = (if x \<in> set ys then minus_list_mset xs (remove1 x ys) else x # (minus_list_mset xs ys)),True,37.6419,auto,ollama:qwen2.5-coder:7b,162,1,0,False,True
+monotone_on A P (\<ge>) f \<Longrightarrow> monotone_on A P (\<ge>) g \<Longrightarrow> monotone_on A P (\<ge>) (f \<sqinter> g),False,126.5596,auto,ollama:qwen2.5-coder:7b,739,0,1,True,True
+monotone_on A P (\<ge>) f \<Longrightarrow> monotone_on A P (\<ge>) g \<Longrightarrow> monotone_on A P (\<ge>) (f \<squnion> g),False,140.0312,auto,ollama:qwen2.5-coder:7b,603,0,1,True,True
+monotone_on A P (\<le>) f \<Longrightarrow> monotone_on A P (\<le>) g \<Longrightarrow> monotone_on A P (\<le>) (f \<squnion> g),False,133.2296,auto,ollama:qwen2.5-coder:7b,554,0,0,True,True
+n choose k = (if k > n then 0 else if 2 * k > n then n choose (n - k) else (fold_atLeastAtMost_nat (*) (n - k + 1) n 1 div fact k)),True,63.4612,auto,ollama:qwen2.5-coder:7b,166,1,0,False,True
+r \<subseteq> s \<Longrightarrow> (r\<^sup>+ \<inter> s) O r \<subseteq> s \<Longrightarrow> r\<^sup>+ \<subseteq> s,True,38.3626,auto,ollama:qwen2.5-coder:7b,155,1,0,False,True
+summable (\<lambda>n. f (Suc n) * z ^ n :: 'a::real_normed_div_algebra) = summable (\<lambda>n. f n * z ^ n),False,109.5242,auto,ollama:qwen2.5-coder:7b,278,0,1,True,True
+symp_on A R \<Longrightarrow> x \<in> A \<Longrightarrow> y \<in> A \<Longrightarrow> R x y \<Longrightarrow> R y x,True,37.6946,auto,ollama:qwen2.5-coder:7b,148,1,0,False,True
+totalp_on A R \<Longrightarrow> x \<in> A \<Longrightarrow> y \<in> A \<Longrightarrow> x \<noteq> y \<Longrightarrow> R x y \<or> R y x,True,64.2010,auto,ollama:qwen2.5-coder:7b,172,1,0,False,True
+|\<Union>(\<Union>((\<lambda>f. f x) ` X))| \<le>o hbd \<Longrightarrow> |(Union \<circ> collect X) x| \<le>o hbd,False,119.5354,auto,ollama:qwen2.5-coder:7b,280,0,1,True,True
