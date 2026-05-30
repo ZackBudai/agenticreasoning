@@ -161,14 +161,19 @@ cd solution && python -m planner.experiments bench \
 
 `--strict-no-sorry` requires the final proof to have zero `sorry`s; `--verify` runs the strict verifier on the assembled proof.
 
-### Baseline (sledgehammer-only) — for comparison
+### Baseline — prover benchmark
+
+The baseline prover is exercised through the same `prover.experiments bench` entry point that the comparison harnesses use:
 
 ```bash
-cd baseline && python baselines/sledge_only.py \
-  --file datasets/logic.txt --imports Main \
-  --provers "e z3 vampire cvc5" \
-  --sledge-timeout 60 --goal-timeout 60
+cd baseline && source .venv/bin/activate && \
+python -m prover.experiments bench \
+  --file datasets/hol_main_easy_goals_test.txt \
+  --model 'ollama:qwen2.5-coder:7b' \
+  --timeout 60 --sledge --sledge-timeout 30
 ```
+
+For head-to-head comparison use `compare.py` (prover) or `plan_compare.sh` (planner) from the repo root — those swap `sys.path` between `baseline/` and `solution/` automatically.
 
 ---
 
