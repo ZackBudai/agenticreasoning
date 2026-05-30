@@ -1,5 +1,0 @@
-session Comparison = HOL +
-  options [quick_and_dirty]
-  theories
-    Baseline_Results
-    Solution_Results

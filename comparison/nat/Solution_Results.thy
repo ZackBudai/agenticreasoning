@@ -22,13 +22,13 @@ lemma goal_4_Suc_n___0: "Suc n \<noteq> 0"
 lemma goal_5_n___n: "n \<le> n"
   sorry
 
-(* FAILED — no proof found *)
+(* PROVED *)
 lemma goal_6_min_n_n___n: "min n n = n"
-  sorry
+  by (metis min_def)
 
-(* FAILED — no proof found *)
+(* PROVED *)
 lemma goal_7_max_n_n___n: "max n n = n"
-  sorry
+  by (metis max_def)
 
 (* FAILED — no proof found *)
 lemma goal_8_n___m___m___n: "n + m = m + n"

@@ -14,7 +14,7 @@ Reference upstream: [`zhehou/llm-isabelle`](https://github.com/zhehou/llm-isabel
 ┌────────────────────┐         ┌──────────────────────────┐
 │  baseline/  (FROZEN)│        │  solution/  (OUR WORK)    │
 │  upstream copy      │        │  modified prover+planner  │
-│  reference numbers  │  ←──→  │  F1–F13 fixes applied     │
+│  reference numbers  │  ←──→  │  F1–F29 fixes applied     │
 └────────────────────┘         └──────────────────────────┘
         ▲                                    ▲
         │                                    │
@@ -44,7 +44,7 @@ Key entry point: `prover.prover.prove_goal(...)`.
 
 LLM generates a **structured Isar proof outline** (induction/cases/helper facts, possibly with `sorry` placeholders). The driver then:
 
-1. **Fast-path** (F11): tries canned finishers (`by blast`/`auto`/`simp`/…) and the stepwise prover directly. Many propositional / first-order goals close in <1s.
+1. **Fast-path**: tries canned finishers (`by blast`/`auto`/`simp`/…) and the stepwise prover directly. Many propositional / first-order goals close in <1s.
 2. **Fill**: for each `sorry`, extracts the exact subgoal context (assumptions + goal) and asks the prover for a replacement.
 3. **CEGIS repair** (`planner/repair.py`): on failure, staged edits from small to large — block → subproof → whole proof. After every repair, Fill is re-run on any newly introduced sorrys.
 
@@ -224,30 +224,36 @@ For the long assignment sweep there's a copy-paste runbook in [`../SWEEP_RUNBOOK
 
 | Dataset | Goals | Baseline | Solution |
 |---|---:|---:|---:|
-| lists | 18 | 0 | 15 |
+| lists | 18 | 0 | 17 |
 | logic | 5  | 0 | 5  |
-| nat   | 9  | 0 | 2  |
+| nat   | 9  | 0 | 4  |
 | sets  | 8  | 0 | 8  |
-| **Total** | **40** | **0** | **30** |
+| **Total** | **40** | **0** | **34** |
 
-The headline `0` for baseline is **not** a comparison artefact — it's caused by a real Pydantic-decode bug in `isabelle_client ≥ 1.0` that the solution patches in `solution/prover/isabelle_api.py:_decode_body_to_dict`. Documented as a reportable improvement in [`AI_LOG.md`](AI_LOG.md) Entry 7.
+The headline `0` for baseline is **not** a comparison artefact — it's caused by a real Pydantic-decode bug in `isabelle_client ≥ 1.0` that the solution patches in `solution/prover/isabelle_api.py:_decode_body_to_dict`. Documented in [`AI_LOG.md`](AI_LOG.md) Entry 7.
 
-### Planner comparison — smoke (post-F13)
-`smoke_f11.txt` (5 goals, K=1, T=60s, `ollama:qwen2.5-coder:7b`):
+### Prover — broader HOL-main sweep
+`ollama:qwen2.5-coder:7b`, solution-only, 100 goals per tier (see `solution/datasets/results/`):
 
-| Run | Baseline | Solution |
+| Tier | Goals | Solution |
 |---|---:|---:|
-| pre-F12, pre-F13 | 0/5 | 0/5 (5/5 PROVED but strict-verify rejected) |
-| F12 only         | 0/5 | 0/5 (prover correctly reports `success=False`) |
-| **F11 + F12 + F13** | **0/5** | **5/5** in ~8.7s/goal mean |
+| hol_main_easy | 100 | 72 |
+| hol_main_mid  | 100 | 71 |
 
-Larger sweeps land under `planner_comparison_*/summary.md` — see those directories for per-snapshot numbers.
+### Planner comparison — hard_25 (full run, final)
+`hard_25.txt` (25 goals), K=3, T=180s, `ollama:qwen2.5-coder:7b`, strict-no-sorry (see [`planner_comparison/summary.md`](planner_comparison/summary.md)):
+
+| Metric | Baseline | Solution |
+|---|---:|---:|
+| Verified (no sorry) | 0/25 | **18/25** |
+
+Milestone snapshots of earlier fix stages are archived under `planner_comparison_*/summary.md`.
 
 ---
 
-## Key improvements (F1–F13)
+## Key improvements
 
-Detailed in [`AI_LOG.md`](AI_LOG.md) Entries 7–11. Headline list:
+Detailed in [`AI_LOG.md`](AI_LOG.md) Entries 7–15. Headline list:
 
 | # | What |
 |---|---|
@@ -262,6 +268,16 @@ Detailed in [`AI_LOG.md`](AI_LOG.md) Entries 7–11. Headline list:
 | F11 | Hybrid fast-path: canned finishers + direct prover call before outline generation. |
 | F12 | Prover `try_finish` cross-checks `finished_ok` against the strict verifier. |
 | F13 | **Load-bearing fix:** strict verifier now reads FINISHED-frame bodies the way `finished_ok` does (the previous protocol-mismatched implementation silently rejected every correct proof). |
+| F14 | Deadline bail-out in outline diversity-scoring loop (prevents unbounded pre-Fill spend). |
+| F15 | Bounded sketch check — skeleton validity gates before Fill is invoked. |
+| F16 | Viable-LLM-call floor — guarantees the driver always has budget for at least one real attempt. |
+| F17 | 1.2× wall-clock cap on total planner time; outline placeholder gate rejects degenerate skeletons early. |
+| F18–F20 | Card/sum fast-path finishers; `suggest_common_lemmas` extended with cardinality and sum lemma families. |
+| F21–F23 | Hand-crafted Isar templates for induction-over-sets goals (card partition, sum over indicator, etc.); template resilience for partial matches. |
+| F24–F26 | LLM-call floor/ceiling (30–60 s per hole); legacy driver-path coverage; content-bug fixes (argument order in `from`, extraneous `using` in card_cartesian_product). |
+| F27 | HOL-corpus RAG: `extract_hol.py` mines 471 K HOL/AFP names; env-gated unknown-reference validator (`USE_NAME_VALIDATOR=1`). |
+| F28 | Widened placeholder regex catches `"..."` / TODO markers; `_count_balance_issues` detects malformed proof structure; `classify_failures.py` post-mortem classifier. |
+| F29 | Type-annotation retry wraps free variables as `(_::nat\|int\|real)` on tactic failure; early bail when first Fill makes zero progress on a large outline past 50% budget. |
 
 ---
 
@@ -330,7 +346,7 @@ agenticreasoning/
 | [`AI_LOG.md`](AI_LOG.md) | All generative-AI interactions used to build this (required for the assignment report appendix) |
 | [`../SWEEP_RUNBOOK.md`](../SWEEP_RUNBOOK.md) | Copy-paste commands for the long assignment-flavor sweep + live progress watcher |
 | `comparison/summary.md` | Latest prover comparison numbers |
-| `planner_comparison*/summary.md` | Planner comparison snapshots per fix milestone (F1-F8, F10, F11, F12, F13) |
+| `planner_comparison*/summary.md` | Planner comparison snapshots per fix milestone (through final) |
 
 ---
 

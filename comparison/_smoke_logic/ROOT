@@ -1,4 +1,0 @@
-session Comparison = HOL +
-  theories
-    Baseline_Results
-    Solution_Results

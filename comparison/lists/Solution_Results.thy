@@ -26,13 +26,13 @@ lemma goal_5_map_id_xs___xs: "map id xs = xs"
 lemma goal_6_map_f__xs___ys____map_f_xs___m: "map f (xs @ ys) = map f xs @ map f ys"
   by simp
 
-(* FAILED — no proof found *)
+(* PROVED *)
 lemma goal_7_map_f__rev_xs____rev__map_f_xs: "map f (rev xs) = rev (map f xs)"
-  sorry
+  by (metis rev_map)
 
-(* FAILED — no proof found *)
+(* PROVED *)
 lemma goal_8_length__xs___ys____length_xs: "length (xs @ ys) = length xs + length ys"
-  sorry
+  by simp
 
 (* PROVED *)
 lemma goal_9_length__rev_xs____length_xs: "length (rev xs) = length xs"

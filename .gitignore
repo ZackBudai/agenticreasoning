@@ -34,7 +34,7 @@ Thumbs.db
 
 # Scratch / debug
 **/tmp/
-
+*.bib
 *.typ
 
 # Generated micro-RAG artefacts (regenerable via build_rag.sh — see SWEEP_RUNBOOK.md)
