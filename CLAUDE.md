@@ -118,12 +118,17 @@ python -m planner.experiments bench --file datasets/lists.txt \
   --model 'qwen3-coder:30b'
 ```
 
-### Baseline (sledgehammer only)
+### Baseline prover
+
+Run the baseline prover the same way compare.py exercises it (from `baseline/`):
 
 ```bash
-python baselines/sledge_only.py --file datasets/logic.txt --imports Main \
-  --provers "e z3 vampire cvc5" --sledge-timeout 60 --goal-timeout 60
+cd baseline
+python -m prover.experiments bench --suite lists \
+  --model 'ollama:qwen2.5-coder:7b' --timeout 30 --sledge --sledge-timeout 30
 ```
+
+`sledge_only.py` is a standalone Isabelle-build script that bypasses the prover stack entirely and was not used for the comparison results.
 
 ### Training the Reranker
 
