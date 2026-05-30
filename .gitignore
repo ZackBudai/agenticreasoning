@@ -36,6 +36,14 @@ Thumbs.db
 **/tmp/
 *.bib
 *.typ
+*.pdf
+
+# Assignment-specific files not relevant to the codebase
+AI_LOG.md
+
+# Top-level run logs
+*_run.log
+*_remaining.sh
 
 # Generated micro-RAG artefacts (regenerable via build_rag.sh — see SWEEP_RUNBOOK.md)
 solution/datasets/isar_pairs_*.jsonl

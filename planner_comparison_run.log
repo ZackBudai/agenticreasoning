@@ -1,2 +1,0 @@
-nohup: ignoring input
-── planner.baseline (goal-file=hard_25.txt, model=ollama:qwen2.5-coder:7b, timeout=180s, k=3) → /home/zack/Desktop/AGENTIC_REASONING/agenticreasoning/planner_comparison/_logs/baseline.log
