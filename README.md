@@ -219,8 +219,8 @@ For the long assignment sweep there's a copy-paste runbook in [`../SWEEP_RUNBOOK
 
 ## Results
 
-### Prover comparison — curated sweep
-`ollama:qwen2.5-coder:32b`, solution-timeout=120s, baseline-timeout=30s (see [`comparison/summary.md`](comparison/summary.md)):
+### Prover comparison — curated suites
+`ollama:qwen2.5-coder:7b`, solution-timeout=120s, baseline-timeout=30s (see [`comparison/summary.md`](comparison/summary.md)):
 
 | Dataset | Goals | Baseline | Solution |
 |---|---:|---:|---:|
@@ -230,24 +230,36 @@ For the long assignment sweep there's a copy-paste runbook in [`../SWEEP_RUNBOOK
 | sets  | 8  | 0 | 8  |
 | **Total** | **40** | **0** | **34** |
 
-The headline `0` for baseline is **not** a comparison artefact — it's caused by a real Pydantic-decode bug in `isabelle_client ≥ 1.0` that the solution patches in `solution/prover/isabelle_api.py:_decode_body_to_dict`. Documented in [`AI_LOG.md`](AI_LOG.md) Entry 7.
+The baseline scores zero across every suite due to a Pydantic-decode bug in `isabelle_client ≥ 1.0` that the solution patches in `solution/prover/isabelle_api.py:_decode_body_to_dict`. Documented in [`AI_LOG.md`](AI_LOG.md) Entry 7.
 
-### Prover — broader HOL-main sweep
-`ollama:qwen2.5-coder:7b`, solution-only, 100 goals per tier (see `solution/datasets/results/`):
-
-| Tier | Goals | Solution |
-|---|---:|---:|
-| hol_main_easy | 100 | 72 |
-| hol_main_mid  | 100 | 71 |
-
-### Planner comparison — hard_25 (full run, final)
+### Planner comparison — hard_25
 `hard_25.txt` (25 goals), K=3, T=180s, `ollama:qwen2.5-coder:7b`, strict-no-sorry (see [`planner_comparison/summary.md`](planner_comparison/summary.md)):
 
-| Metric | Baseline | Solution |
-|---|---:|---:|
-| Verified (no sorry) | 0/25 | **18/25** |
+| Dataset | Goals | Baseline | Solution |
+|---|---:|---:|---:|
+| hard_25.txt | 25 | 0 | **22** |
 
 Milestone snapshots of earlier fix stages are archived under `planner_comparison_*/summary.md`.
+
+### Planner+prover — 300-goal HOL Main sweep (end-to-end)
+`ollama:qwen2.5-coder:7b`, T=120s, strict-no-sorry+verify (see `report_metric_sweep_20260528-0204/summary.md`):
+
+| Dataset | Goals | Baseline | Solution |
+|---|---:|---:|---:|
+| hol_main_easy | 100 | 0 | 75 |
+| hol_main_mid  | 100 | 0 | 83 |
+| hol_main_hard | 100 | 0 | 67 |
+| **Total** | **300** | **0** | **225** |
+
+### Prover-only — 300-goal HOL Main sweep
+`ollama:qwen2.5-coder:7b`, T=120s (baseline T=60s), via `compare.py` harness (see `solution/datasets/results/`):
+
+| Dataset | Goals | Baseline | Solution |
+|---|---:|---:|---:|
+| hol_main_easy | 100 | 0 | 72 |
+| hol_main_mid  | 100 | 0 | 71 |
+| hol_main_hard | 100 | 0 | 56 |
+| **Total** | **300** | **0** | **199** |
 
 ---
 
